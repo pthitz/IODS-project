@@ -6,12 +6,55 @@
 - Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
 - Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
 
-## Data 
+### Data 
     dat <- read.csv("D:/MOOC-kurssi/IODS-project/data/lrn14_dat.csv") 
     str(dat)
-    summary(dat$age)  
-    summary(dat$points)  
+    summary(dat$age)   # checking range of values on column *age*
+    summary(dat$points)   # checking range of values on column *points*
 Dataset is a summary of questionnaire results from 166 students who completed the exam, for which *gender* (M=male, F=female), *age* (17-55 years), and exam results (*points*, on the range 7-33) is known. The questionnaire included questions measuring attitude and different learning strategies (deep, surface, or strategic learning). Corresponding summary variables *deep*, *surf* and *stra* have been transformed to equal scale by taking rowmeans (by calculating means for each of all questions measuring that specific learning strategy, separately for each student.)   
 *Gender* is coded as **factor** and other variables as **numeric**.
 
+#### Exploration of the data and the relationships between numerical variables  
+It might be that different genders have different trends in variables. In order to visually check the possible differences, we create subsets of the data by column gender for easy plotting.  
+
+    dat_males <- subset(dat,gender=="M")  
+    dat_females <- subset(dat,gender=="F")  
     
+* **Distributions of numerical variables**  
+Boxplots will summarize data distribution nicely but if variables are in a different scale, some of the plots may not be very visible.  
+
+    summary(dat) # check scales of variables to see which are sensible to show in the same plot   
+*Age* (column 2) and *points* (column 7) vary approximately on the same scale so they can be shown together.  
+
+    par(mfrow=c(2,2)) # tell R that I will want 2 x 2 matrix of plots, filling rows first
+    boxplot(dat_males[,c(2,7)],main="males")     
+    boxplot(dat_females[,c(2,7)],main="females")     
+    boxplot(dat_males[,c(3:6)],main="males")  
+    boxplot(dat_females[,c(3:6)],main="females")  
+Distribution of *age* is scewed (most students are between 20-30 years in both genders), but other variables seem to at least resemble a normal distribution. It looks like there might be a gender difference in attitude (attitudes of males seem generally higher than attitudes of females), but no other gender differences are obvious from this figure.  
+
+* **Relationships between numerical variables**  
+    pairs(dat[,-1],col=dat$gender) #scatterplot matrix of all numerical variables and colors points by gender  
+There might be a positive linear associations between variable pairs *attitude*--*deep learning* and *attitude*--*points*, and negative associations between variable pairs *age*--*surface learning*, *attitude*--*surface learning*, and *deep learning*--*surface learning*. This means that people with positive attitude tend to achieve higher points in exam and tend to aim for deep learning instead of surface learning. Youngest students rarely had high scores in deep learning, but this did not prevent some of them from reaching very good test scores.  
+
+#### Linear regression model explaining exam points  
+In order to select variables most likely to explain exam points, let's calculate correlations between that and other numerical variables.  
+    cor_withpoints <- cor(dat[,c(2:6)],dat$points)  
+    cor_withpoints  
+    
+| |Correlation|
+|------:|:------|
+|age | -0.09319032|
+|attitude | 0.43652453|
+|deep  |   -0.01014849|
+|surf  |   -0.14435642|
+|stra  |    0.14612247|  
+Three variables most strongly associated with points are
+1. attitude
+2. strategic learning
+3. surface learning  
+
+* **Regression model**  
+    mod <- lm(points~attitude+surf+stra,data=dat)
+    summary(mod)  
+

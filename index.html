@@ -387,16 +387,14 @@ summary {
 
 <div id="TOC">
 <ul>
-<li><a href="#about-the-project">About the project</a></li>
-<li><a href="#regression-and-model-validation">2. Regression and model validation</a><ul>
-<li><a href="#data">Data</a></li>
-</ul></li>
+<li><a href="#about-the-project">1. About the project</a></li>
+<li><a href="#regression-and-model-validation">2. Regression and model validation</a></li>
 </ul>
 </div>
 
 <hr />
 <div id="about-the-project" class="section level1">
-<h1>About the project</h1>
+<h1>1. About the project</h1>
 <div id="feeling-right-now" class="section level3">
 <h3>Feeling right now</h3>
 <p>I think I drank too much tea while doing the first set of DataCamp exercises.</p>
@@ -431,15 +429,76 @@ and</li>
 <li>Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.</li>
 <li>Assume the reader has no previous knowledge of your data or the more advanced methods you are using.</li>
 </ul>
-<div id="data" class="section level2">
-<h2>Data</h2>
+<div id="data" class="section level3">
+<h3>Data</h3>
 <pre><code>dat &lt;- read.csv(&quot;D:/MOOC-kurssi/IODS-project/data/lrn14_dat.csv&quot;) 
 str(dat)
-summary(dat$age)  
-summary(dat$points)  </code></pre>
+summary(dat$age)   # checking range of values on column *age*
+summary(dat$points)   # checking range of values on column *points*</code></pre>
 <p>Dataset is a summary of questionnaire results from 166 students who completed the exam, for which <em>gender</em> (M=male, F=female), <em>age</em> (17-55 years), and exam results (<em>points</em>, on the range 7-33) is known. The questionnaire included questions measuring attitude and different learning strategies (deep, surface, or strategic learning). Corresponding summary variables <em>deep</em>, <em>surf</em> and <em>stra</em> have been transformed to equal scale by taking rowmeans (by calculating means for each of all questions measuring that specific learning strategy, separately for each student.)<br />
 <em>Gender</em> is coded as <strong>factor</strong> and other variables as <strong>numeric</strong>.</p>
+<div id="exploration-of-the-data-and-the-relationships-between-numerical-variables" class="section level4">
+<h4>Exploration of the data and the relationships between numerical variables</h4>
+<p>It might be that different genders have different trends in variables. In order to visually check the possible differences, we create subsets of the data by column gender for easy plotting.</p>
+<pre><code>dat_males &lt;- subset(dat,gender==&quot;M&quot;)  
+dat_females &lt;- subset(dat,gender==&quot;F&quot;)  </code></pre>
+<ul>
+<li><p><strong>Distributions of numerical variables</strong><br />
+Boxplots will summarize data distribution nicely but if variables are in a different scale, some of the plots may not be very visible.</p>
+<p>summary(dat) # check scales of variables to see which are sensible to show in the same plot<br />
+<em>Age</em> (column 2) and <em>points</em> (column 7) vary approximately on the same scale so they can be shown together.</p>
+<p>par(mfrow=c(2,2)) # tell R that I will want 2 x 2 matrix of plots, filling rows first boxplot(dat_males[,c(2,7)],main=“males”)<br />
+boxplot(dat_females[,c(2,7)],main=“females”)<br />
+boxplot(dat_males[,c(3:6)],main=“males”)<br />
+boxplot(dat_females[,c(3:6)],main=“females”)<br />
+Distribution of <em>age</em> is scewed (most students are between 20-30 years in both genders), but other variables seem to at least resemble a normal distribution. It looks like there might be a gender difference in attitude (attitudes of males seem generally higher than attitudes of females), but no other gender differences are obvious from this figure.</p></li>
+<li><p><strong>Relationships between numerical variables</strong><br />
+pairs(dat[,-1],col=dat$gender) #scatterplot matrix of all numerical variables and colors points by gender<br />
+There might be a positive linear associations between variable pairs <em>attitude</em>–<em>deep learning</em> and <em>attitude</em>–<em>points</em>, and negative associations between variable pairs <em>age</em>–<em>surface learning</em>, <em>attitude</em>–<em>surface learning</em>, and <em>deep learning</em>–<em>surface learning</em>. This means that people with positive attitude tend to achieve higher points in exam and tend to aim for deep learning instead of surface learning. Youngest students rarely had high scores in deep learning, but this did not prevent some of them from reaching very good test scores.</p></li>
+</ul>
+</div>
+<div id="linear-regression-model-explaining-exam-points" class="section level4">
+<h4>Linear regression model explaining exam points</h4>
+<p>In order to select variables most likely to explain exam points, let’s calculate correlations between that and other numerical variables.<br />
+cor_withpoints &lt;- cor(dat[,c(2:6)],dat$points)<br />
+cor_withpoints</p>
+<table>
+<thead>
+<tr class="header">
+<th align="right"></th>
+<th align="left">Correlation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">age</td>
+<td align="left">-0.09319032</td>
+</tr>
+<tr class="even">
+<td align="right">attitude</td>
+<td align="left">0.43652453</td>
+</tr>
+<tr class="odd">
+<td align="right">deep</td>
+<td align="left">-0.01014849</td>
+</tr>
+<tr class="even">
+<td align="right">surf</td>
+<td align="left">-0.14435642</td>
+</tr>
+<tr class="odd">
+<td align="right">stra</td>
+<td align="left">0.14612247</td>
+</tr>
+</tbody>
+</table>
+<p>Three variables most strongly associated with points are 1. attitude 2. strategic learning 3. surface learning</p>
+<ul>
+<li><strong>Regression model</strong><br />
+mod &lt;- lm(points~attitude+surf+stra,data=dat) summary(mod)</li>
+</ul>
 <hr />
+</div>
 </div>
 </div>
 
