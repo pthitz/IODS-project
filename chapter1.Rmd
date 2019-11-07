@@ -1,5 +1,5 @@
 
-# About the project
+# 1. About the project
 
 ### Feeling right now
 I think I drank too much tea while doing the first set of DataCamp exercises.  
