@@ -1,4 +1,4 @@
-# Paula Thitz, 7.11.2019, IODS exercise week 2 ('data wrangling' -part)
+# Paula Thitz, 7.11.2019, IODS exercise week 2 ('data wrangling' -part), data from http://www.helsinki.fi/~kvehkala/JYTmooc/JYTOPKYS3-data.txt ----
 
 # import the data to R, explore structure and dimensions ----
 learning2014 <- read.table("http://www.helsinki.fi/~kvehkala/JYTmooc/JYTOPKYS3-data.txt", header=TRUE, sep= "\t")
@@ -12,6 +12,9 @@ require(dplyr)
 # a) gender, age, attitude, and points (which can be directly copied from original dataset)
 dat <- learning2014[,c("gender","Age","Attitude","Points")] #reorder variables in the wanted order
 dat <- dat %>% rename(age=Age,attitude=Attitude,points=Points) #change variable names to match the instructions
+
+# compared to the example data, it looks like 'attitude' needs to be scaled by dividing it with 10
+dat$attitude <- dat$attitude/10
 
 # b) generating variables deep, stra, surf according to DataCamp example
 # list of variable names to be included in calculation of deep, stra and surf
@@ -44,8 +47,7 @@ names(dat) #check that the names of columns are as wanted
 getwd() # [1] "D:/Opiskelu/MOOC-kurssi/IODS-project"
 
 # save dataset and check you can read it
-write.csv(dat,file="D:/Opiskelu/MOOC-kurssi/IODS-project/data/lrn14_dat.csv",row.names=FALSE) #if row.names are not set to false, write.csv will end up having an extra colum
-dat1 <- read.csv("D:/Opiskelu/MOOC-kurssi/IODS-project/data/lrn14_dat.csv") #bring the data to R (with a different name so that you can check for the differences, if necessary)
+write.csv(dat,file="D:/MOOC-kurssi/IODS-project/data/lrn14_dat.csv",row.names=FALSE) #if row.names are not set to false, write.csv will end up having an extra colum
+dat <- read.csv("D:/MOOC-kurssi/IODS-project/data/lrn14_dat.csv") #bring the data to R (with a different name so that you can check for the differences, if necessary)
 
-str(dat1)
-
+str(dat)

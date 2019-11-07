@@ -388,7 +388,9 @@ summary {
 <div id="TOC">
 <ul>
 <li><a href="#about-the-project">About the project</a></li>
-<li><a href="#insert-chapter-2-title-here">Insert chapter 2 title here</a></li>
+<li><a href="#regression-and-model-validation">2. Regression and model validation</a><ul>
+<li><a href="#data">Data</a></li>
+</ul></li>
 </ul>
 </div>
 
@@ -421,15 +423,24 @@ and</li>
 <hr />
 </div>
 </div>
-<div id="insert-chapter-2-title-here" class="section level1">
-<h1>Insert chapter 2 title here</h1>
+<div id="regression-and-model-validation" class="section level1">
+<h1>2. Regression and model validation</h1>
 <p><em>Describe the work you have done this week and summarize your learning.</em></p>
 <ul>
 <li>Describe your work and results clearly.</li>
 <li>Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.</li>
 <li>Assume the reader has no previous knowledge of your data or the more advanced methods you are using.</li>
 </ul>
+<div id="data" class="section level2">
+<h2>Data</h2>
+<pre><code>dat &lt;- read.csv(&quot;D:/MOOC-kurssi/IODS-project/data/lrn14_dat.csv&quot;) 
+str(dat)
+summary(dat$age)  
+summary(dat$points)  </code></pre>
+<p>Dataset is a summary of questionnaire results from 166 students who completed the exam, for which <em>gender</em> (M=male, F=female), <em>age</em> (17-55 years), and exam results (<em>points</em>, on the range 7-33) is known. The questionnaire included questions measuring attitude and different learning strategies (deep, surface, or strategic learning). Corresponding summary variables <em>deep</em>, <em>surf</em> and <em>stra</em> have been transformed to equal scale by taking rowmeans (by calculating means for each of all questions measuring that specific learning strategy, separately for each student.)<br />
+<em>Gender</em> is coded as <strong>factor</strong> and other variables as <strong>numeric</strong>.</p>
 <hr />
+</div>
 </div>
 
 
