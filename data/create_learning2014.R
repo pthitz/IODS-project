@@ -44,8 +44,8 @@ names(dat) #check that the names of columns are as wanted
 getwd() # [1] "D:/Opiskelu/MOOC-kurssi/IODS-project"
 
 # save dataset and check you can read it
-write.csv(dat,file="lrn14_dat.csv",row.names=FALSE) #if row.names are not set to false, write.csv will end up having an extra colum
-dat1 <- read.csv("D:/Opiskelu/MOOC-kurssi/IODS-project/lrn14_dat.csv") #bring the data to R (with a different name so that you can check for the differences, if necessary)
+write.csv(dat,file="D:/Opiskelu/MOOC-kurssi/IODS-project/data/lrn14_dat.csv",row.names=FALSE) #if row.names are not set to false, write.csv will end up having an extra colum
+dat1 <- read.csv("D:/Opiskelu/MOOC-kurssi/IODS-project/data/lrn14_dat.csv") #bring the data to R (with a different name so that you can check for the differences, if necessary)
 
 str(dat1)
 
