@@ -4,15 +4,15 @@
 ```{r}
 dat <- read.csv("D:/Opiskelu/MOOC-kurssi/IODS-project/data/lrn14_dat.csv") 
 str(dat)
-summary(dat$age)   # checking range of values on column *age*
-summary(dat$points)   # checking range of values on column *points*
+summary(dat$age)   # checking range of values on column 'age'
+summary(dat$points)   # checking range of values on column 'points'
 ```
-Dataset is a summary of questionnaire results from 166 students who completed the exam, for which *gender* (M=male, F=female), *age* (17-55 years), and exam results (*points*) is known. The students with 0 points from the exam have been removed from data; for the students who attempted to finish the exam, exam results vary from 7-33 points. The questionnaire included questions measuring attitude and different learning strategies (deep, surface, or strategic learning). Corresponding summary variables *deep*, *surf* and *stra* have been transformed to equal scale by taking rowmeans (by calculating means for each of all questions measuring that specific learning strategy, separately for each student.)   
+Dataset is a summary of questionnaire results from 166 students who completed the exam, for which *gender* (M=male, F=female), *age* (17-55 years), and exam results (*points*) is known. The students with 0 points from the exam were removed from the data; for the students who attempted to finish the exam, exam results vary from 7-33 *points*. The questionnaire included questions measuring attitude and different learning strategies (deep, surface, or strategic learning). Corresponding summary variables *deep*, *surf* and *stra* have been transformed to equal scale by taking rowmeans (by calculating means for all questions measuring that specific learning strategy, done separately for each student.) *Attitude* has been brought to the same scale with learning strategies by dividing the initial value by 10.  
 
 *Gender* is coded as **factor** and other variables as **numeric**.
 
 ### **2.2 Graphical exploration of the data**  
-It might be that different genders have different trends in variables. In order to visually check the possible differences, we create subsets of the data by column gender for easy plotting.  
+It might be that different genders have different trends in variables. In order to visually check the possible differences, we create subsets of the data by *gender* for easy plotting.  
 
 ```{r}
 dat_males <- subset(dat,gender=="M")  
@@ -20,11 +20,11 @@ dat_females <- subset(dat,gender=="F")
 ```  
     
 **Distributions of numerical variables**  
-Boxplots will summarize data distribution nicely. However, if variables are in a very different scale, some of the plots may not be very visible. So, we first check which of the numerical variables are in the same range.  
+Boxplots will summarize data distribution nicely. However, if variables are in a very different scale, automatic scaling may cause some of the plots to show poorly. So, we first check which of the numerical variables are in the same range and thus, can be shown in the same plot.  
 ```{r}
 summary(dat) # check scales of variables   
 ```
-*Age* (column 2) and *points* (column 7) vary approximately on the same scale so they can be shown in the same plot.  
+*Age* (column 2) and *points* (column 7) vary approximately on the same range. The remaining variables (columns 3-6) also share a similar range.  
 ```{r}
 par(mfrow=c(1,2)) # graphical setting tell R that I want 2 plots to appear side by side
 boxplot(dat_males[,c(2,7)],main="males") # index variables [rows,columns] are used to specify that in this plot, we want to plot data in columns 2 and 7     
@@ -33,11 +33,11 @@ boxplot(dat_males[,c(3:6)],main="males")
 boxplot(dat_females[,c(3:6)],main="females")  
 ```    
 
-Distribution of *age* is scewed (most students are between 20-30 years in both genders), but other variables seem to at least resemble a normal distribution. It looks like there might be a gender difference in *attitude* (attitudes of males seem generally higher than attitudes of females), but no other gender differences are obvious from these figures.  
+Distribution of *age* is scewed (most students are between 20-30 years in both genders, but there are also several older students), but other variables seem to at least resemble a normal distribution. From the boxplots, it looks like there might be a gender difference in *attitude* (attitudes of males seem generally higher than attitudes of females), but no other gender differences are obvious from these figures.  
 
 **Relationships between numerical variables**  
 ```{r}
-pairs(dat[,-1],col=dat$gender) #scatterplot matrix of all numerical variables (excluding column 1, which has a categorical variable) and colors points by gender  
+pairs(dat[,-1],col=dat$gender) #scatterplot matrix of all numerical variables (excluding column 1, which is a categorical variable), points are colored according to gender  
 ```   
 With so many variables the plots are a bit small and the potential trends are slightly difficult to see, but it looks like there might be a positive linear associations between variable pairs *attitude*--*deep learning* and *attitude*--*points*, and negative associations between variable pairs *age*--*surface learning*, *attitude*--*surface learning*, and *deep learning*--*surface learning*. This would mean (if not caused by pure chance) that people with positive attitude tend to achieve higher points in exam and tend to aim for deep learning instead of surface learning. Youngest students rarely had high scores in deep learning, but this did not prevent some of them from reaching very good test scores.  
 
