@@ -1,22 +1,17 @@
 # 2. Regression and model validation
 
-*Describe the work you have done this week and summarize your learning.*
-
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
-
-### Data 
+### **2.1 Data** 
 ```{r}
-dat <- read.csv("D:/MOOC-kurssi/IODS-project/data/lrn14_dat.csv") 
+dat <- read.csv("D:/Opiskelu/MOOC-kurssi/IODS-project/data/lrn14_dat.csv") 
 str(dat)
 summary(dat$age)   # checking range of values on column *age*
 summary(dat$points)   # checking range of values on column *points*
 ```
-Dataset is a summary of questionnaire results from 166 students who completed the exam, for which *gender* (M=male, F=female), *age* (17-55 years), and exam results (*points*) is known. The students with 0 points from the exam have been removed from data; for the students taking the exam, exam results vary from 7-33 points. The questionnaire included questions measuring attitude and different learning strategies (deep, surface, or strategic learning). Corresponding summary variables *deep*, *surf* and *stra* have been transformed to equal scale by taking rowmeans (by calculating means for each of all questions measuring that specific learning strategy, separately for each student.)   
+Dataset is a summary of questionnaire results from 166 students who completed the exam, for which *gender* (M=male, F=female), *age* (17-55 years), and exam results (*points*) is known. The students with 0 points from the exam have been removed from data; for the students who attempted to finish the exam, exam results vary from 7-33 points. The questionnaire included questions measuring attitude and different learning strategies (deep, surface, or strategic learning). Corresponding summary variables *deep*, *surf* and *stra* have been transformed to equal scale by taking rowmeans (by calculating means for each of all questions measuring that specific learning strategy, separately for each student.)   
+
 *Gender* is coded as **factor** and other variables as **numeric**.
 
-#### Exploration of the data and the relationships between numerical variables  
+### **2.2 Graphical exploration of the data**  
 It might be that different genders have different trends in variables. In order to visually check the possible differences, we create subsets of the data by column gender for easy plotting.  
 
 ```{r}
@@ -25,41 +20,83 @@ dat_females <- subset(dat,gender=="F")
 ```  
     
 **Distributions of numerical variables**  
-Boxplots will summarize data distribution nicely but if variables are in a different scale, some of the plots may not be very visible.  
+Boxplots will summarize data distribution nicely. However, if variables are in a very different scale, some of the plots may not be very visible. So, we first check which of the numerical variables are in the same range.  
 ```{r}
-summary(dat) # check scales of variables to see which are sensible to show in the same plot   
+summary(dat) # check scales of variables   
 ```
 *Age* (column 2) and *points* (column 7) vary approximately on the same scale so they can be shown in the same plot.  
 ```{r}
 par(mfrow=c(1,2)) # graphical setting tell R that I want 2 plots to appear side by side
-boxplot(dat_males[,c(2,7)],main="males")     
+boxplot(dat_males[,c(2,7)],main="males") # index variables [rows,columns] are used to specify that in this plot, we want to plot data in columns 2 and 7     
 boxplot(dat_females[,c(2,7)],main="females")     
 boxplot(dat_males[,c(3:6)],main="males")  
 boxplot(dat_females[,c(3:6)],main="females")  
-```  
+```    
+
 Distribution of *age* is scewed (most students are between 20-30 years in both genders), but other variables seem to at least resemble a normal distribution. It looks like there might be a gender difference in *attitude* (attitudes of males seem generally higher than attitudes of females), but no other gender differences are obvious from these figures.  
 
-**Visual exploration of relationships between numerical variables**  
+**Relationships between numerical variables**  
 ```{r}
-pairs(dat[,-1],col=dat$gender) #scatterplot matrix of all numerical variables and colors points by gender  
-```  
+pairs(dat[,-1],col=dat$gender) #scatterplot matrix of all numerical variables (excluding column 1, which has a categorical variable) and colors points by gender  
+```   
 With so many variables the plots are a bit small and the potential trends are slightly difficult to see, but it looks like there might be a positive linear associations between variable pairs *attitude*--*deep learning* and *attitude*--*points*, and negative associations between variable pairs *age*--*surface learning*, *attitude*--*surface learning*, and *deep learning*--*surface learning*. This would mean (if not caused by pure chance) that people with positive attitude tend to achieve higher points in exam and tend to aim for deep learning instead of surface learning. Youngest students rarely had high scores in deep learning, but this did not prevent some of them from reaching very good test scores.  
 
-#### Linear regression for exam results (*points*)  
+### **2.3 Linear regression for exam results (*points*) with three explanatory variables**  
 In order to select variables most likely to explain exam points, let's calculate correlations between that and other numerical variables.  
 ```{r}
 cor(dat[,c(2:6)],dat$points)  
 ```
 Based on the printed table, three variables most strongly associated with points are  
-1. attitude  
-2. strategic learning  
-3. surface learning,  
-so we select these variables as initial explanatory variables.  
-* **Regression model**  
+  1. attitude  
+  2. strategic learning  
+  3. surface learning,  
+so we select these variables as initial explanatory variables. 
+
+
+**Initial regression model**  
 ```{r}
-mod <- lm(points~attitude+surf+stra,data=dat)
-summary(mod)  
+mod1 <- lm(points~attitude+surf+stra,data=dat)
+summary(mod1)  
 ```  
 Model summary shows some summary statistics of model residuals (representing the difference between model prediction and actual values). In this case, the median is fairly close to zero and min and maximum are approximately within the same range (between 10-20). This gives us some idea about the distribution of residuals (which is centered close to zero and does not seem too skewed). We will need to check the assumptions of the final model more promptly, but so far this doesn't look bad.  
+
 The next thing in the summary is the coefficients table. Based on the explanatory variables (*attitude*, *surf*, and *stra*), R has fitted a linear model aiming to predict points as closely as possible (to minimize residuals). Estimates essentially define this best-fitting model. Intercept tells the predicted number of *points* for an imaginary student with *attitude*, surface learning and strategic learning having a value of 0. Estimates for the other explanatory variables (which in this case were numeric) tell how much the predicted number of *points* from an exam would change if these variables increase by 1 (e.g., increasing *attitude* by 1 increases the predicted exam *points* by 3.4). Based on the non-explained variability on the data, R has also calculated us standard error for each estimate.  
-Each coefficient is followed by a statistical test (t and P values). These values are related to a t-test testing the null hypothesis that Estimate equals zero. P-value (Pr(>|t|) in the Coefficients-table) tells us the probability of getting an estimate like this by pure chance in a case where the variable in question does not affect exam results. So, if P-value is very low (typically, below 0.05), the data is so convincing that we will reject the null hypothesis and accept the alternative hypothesis (that the estimate really is different from zero). In this case, we interpret the t-test results so that *attitude* has a positive effect on *points*. 
+
+Each coefficient is followed by a statistical test (t and P values). These values are related to a t-test testing the null hypothesis that Estimate equals zero. P-value (Pr(>|t|) in the Coefficients-table) tells us the probability of getting an estimate like this by pure chance in a case where the variable in question does not affect exam results. So, if P-value is very low (typically, below 0.05), the data is so convincing that we will reject the null hypothesis and accept the alternative hypothesis (that the estimate really is different from zero). In this case, we interpret the t-test results so that *attitude* has a positive effect on *points*, but the effects of *surf* or *stra* are not clear enough to be considered statistically significant.  
+
+Finally, the model summary provides the degrees of freedom for the model (number of observations - number of estimates) and gives us R-squared -values, which is a measure of model fit. In this case, R^2^=0.20 tells us that 20% of the variability in the data can be explained by the selected explanatory variables. Adjusted R-squared adds a penalty for including too many variables which do not contribute to the model fit (overfitting the model). F-test at the end of the model summary is related to null hypothesis that all model estimates (including intercept) are zero.  
+    
+**Final regression model**  
+Now, our initial model included two variables (*surf* and *stra*) which did not affect exam *points*, so these variables can be left out from the final model.  
+```{r}
+mod <- lm(points~attitude,data=dat)
+```  
+### **2.4 Linear regression for exam results (*points*)**  
+```{r}
+summary(mod)
+```  
+From the summary of this model, we can see that the predicted values of exam points can be calculated as 
+$$points=11.64+3.53*attitude$$  
+The estimates for both the `intercept` and `attitude` are highly significantly (P<0.001) different from zero, which means that we if the model assumptions were met, we can trust these estimates to reflect the situation in this data. For every 3.5 point increase in *attitude* we can expect the exam *points* of a student to increase by 1.  
+
+The multiple R^2^ tells us that the variability in *attitude* explains 19% of the variability in exam *points* of students.  
+
+**conclusion 1:** Attitude has a positive effect on exam scores.  
+
+### **2.5 Model assumptions**  
+Before we rush to write a ground-breaking manuscript about our **conclusion 1**, we want to check that the general assumptions for fitting linear models were met. Most of these assumptions can be graphically explored by drawing plots about the model residuals (difference between predicted and observed values).
+````{r}
+par(mfrow=(c(1,2)))
+plot(mod,which=1) #a diagnostic plot 'Residuals vs Fitted'
+plot(dat$attitude,dat$points, xlab="attitude", ylab="points", main="Points vs attitude") #predicted vs. explanatory variable
+abline(mod,col="blue") #adding a regression line (in blue) of the model to the figure. Residuals are the vertical distance of each point from this line.
+````  
+First, we plot residuals against fitted values and the target variable (*points*) against the explanatory variable (*attitude*). These plots tell us whether the assumed linear relationship between *points* and *attitude* was correct. This seems to be the case - there is no obvious pattern on the **Residuals vs Fitted**, which tells us that the model describes the data fairly well. Another point to note is that the variability of **residuals** does not change too much when the **fitted value** changes - this tells us that the data is fairly homoscedastic. The red line in the residual figure is the mean of residuals and it remains fairly close to zero, which is also a good thing, because model assumptions expect the residuals to be centered around 0.  
+````{r}
+par(mfrow=(c(1,2)))
+plot(mod,which=c(2,5)) #diagnostic plots 'Normal Q-Q' and 'Residuals vs Leverage'
+````  
+QQ-plot (**Normal Q-Q**) examines the distribution of residuals by comparing their distribution actual distribution (standardized residuals) into a normal distribution (theoretical quantiles). If the residuals follow the dashed line fairly well (as they do in this case), we can interpret that the residuals follow a normal distribution.  
+    **Residuals vs Leverage** explores whether there are data points with unusually high impact on the model. Most of the points in this plot are fairly close to each other and the scale on x-axis does not indicate too high leverage for any of the points, indicating that there are no outliers which would have an anomalously strong impact on the model.  
+
+**conclusion 2:** Model assumptions are met fairly well, which means that we can trust the result summarized in **conclusion 1**.  
