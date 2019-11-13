@@ -1,0 +1,30 @@
+# 3. Logistic regression
+
+### 3.1-3.2 Data 
+```{r}
+alc <- read.csv("http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/alc.txt",sep=",",header = TRUE)
+names(alc)
+```  
+The data is a combination of questionnaire and grade data of 382 students , collected from two secondary schools in Portugal (see Cortez & Silva, 2008, http://www3.dsi.uminho.pt/pcortez/student.pdf). Dataset includes some basic background information on students (gender, age, whether their address is in urban (U) or rural (R) environment), their family relations (e.g. family size and information about parents) and school history (e.g. extra support from school/home, paid extra classes) and grades (G1-G3, averages of maths and portugues grades for 1st, 2nd and 3rd period). Students have also been asked about time and motivation they spend on studies, and some questions about their free time use.  
+
+Average of alcohol consumption (alc_use) has been calculated from average of scores (1=very low, 5=very high) with which student described their alcohol use during week or in the week ends. If the average score is above 2, student is considered to have a high alcohol use.
+
+### 3.3 Select 4 interesting variables potentially related to high or low alcohol use --> formulate hypotheses 
+My guess (hope?) would be that highest alcohol use is among students who tend to go out with their friends. Further, I would guess that having a romantic relationship and good family relations might reduce the probability of high (risky) alcohol use. Another thing that might affect time use is the studywise ambition of the student - it could be presented by studytime or wish to go for higher education. Also gender effects might be interesting, but if I pick that I will need to drop one of the other parameters.  
+
+Alternatively, high alcohol use might predict absences, class failures, poor grades or health problems, but to keep the exercise from being too depressing I think will stick to the more positive (risk-reducing) aspects.
+
+### 3.4 Numerical and graphical exploration of distribution of chosen variables, and relationship with alcohol consumption
+Comment on findings in relation to hypotheses
+
+### 3.5 Make a logistic regression, show and interpret summary, transform coefficients into odd rations and provide confidence intervals  
+Interpret results in relation to hypotheses  
+
+### 3.6 Predictive power of the logistic regression model 
+Comment on results, compare model performance with simple-guessing performance
+
+### 3.7 10-fold cross validation of own model 
+Compare the own model to datacamp model
+
+### 3.8 Compare performance of different models  
+How does number of predictors affect training/testing error rate?

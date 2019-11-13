@@ -113,5 +113,11 @@ head(alc[,c("Dalc","Walc","alc_use","high_use")])
 glimpse(alc)
 write.csv(alc,file="D:/Opiskelu/MOOC-kurssi/IODS-project/data/alc.csv",row.names = FALSE)
 
-alc_check <- read.csv("D:/Opiskelu/MOOC-kurssi/IODS-project/data/alc.csv")
+# check if there are differences in the produced data file and the "example data" from the url provided
+alc_check <- read.table("http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/alc.txt",sep=",",header=TRUE)
 glimpse(alc_check)
+summary(alc_check==alc)
+# - it looks like the datasets have some differences in variables
+#   "traveltime", "studytime", "failures", "famrel", "freetime", 
+#   "goout", "Dalc", "Walc", "health", "absences" and grade-variables G1-G3
+# - since I am not sure where these differences came from, might be wise to use the url-provided data for analysis
