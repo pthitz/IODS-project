@@ -1,8 +1,10 @@
 # 3. Logistic regression
-```{r echo=FALSE}
+```{r include=FALSE}
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(gridExtra)
+
 ````
 
 ### 3.1-3.2 Dataset: alcohol use in secondary school students 
@@ -11,9 +13,10 @@ alc <- read.csv("http://s3.amazonaws.com/assets.datacamp.com/production/course_2
 names(alc)
 ```  
 The data is a combination of questionnaire and school-collected data of 382 students, collected from two secondary schools in Portugal (see [Cortez & Silva, 2008](http://www3.dsi.uminho.pt/pcortez/student.pdf)). Dataset includes some basic background information on students (e.g. gender and age), their family relations, school history, and grades (G1-G3, averages of maths and portugues grades for 1st, 2nd and 3rd period). Students have also been asked about time and motivation they spend on studies, and some questions about their free time use[^1].  
-[^1]: For a full list of data attributes and their abbreviations, see <https://archive.ics.uci.edu/ml/datasets/Student+Performance>
 
 Average of alcohol consumption (*alc_use*) has been calculated from average of scores (1=very low, 5=very high) with which student described their alcohol use during week or in the week ends. Students with an average alcohol use score above 2 are considered to have a high alcohol use.
+
+[^1]: For a full list of data attributes and their abbreviations, see <https://archive.ics.uci.edu/ml/datasets/Student+Performance>
 
 ### 3.3 Aim of study and hypotheses
 From a dataset described above, several interesting questions related to risk factors or consequences of high alcohol use (such as absences, failing a class, poor grades, parental support or general family situation) could be investigated. However, my interest lies more in risk-reducing aspects related to social support and aspirations of the secondary school students. In other words, I want to identify factors which reduce the chances that a student develops a high alcohol use.  
@@ -21,12 +24,16 @@ From a dataset described above, several interesting questions related to risk fa
 Specifically, my aim is to study whether family relations (high values in `famrel`), tendency to go out with friends (high values in `goout`), being in a romantic relationship (binary variable `romantic`) or wish to take a higher education (binary variable `higher`) are related to high alcohol use among Portuguese secondary school students.  
 
 The predicted relationships between these variables are:  
-*H1. Good family relations reduce the chances of developing a high alcohol use.* In secondary school students, high alcohol use might be related to the rebelling against authorities. On the other hand, in students who will occasionally use alcohol, I would assume that a good relationship with parents enables parental intervention before the alcohol use in their kids increases.  
-*H2. Tendency to go out with your friends* will probably increase the occurrences of alcohol use, and thus *increase the probability for high alcohol use.* The underlying assumption is that among secondary school students, it is most common to use alcohol with your friends.  
-*H3. Being in a romantic relationship reduces the probability of high alcohol use.* In some students, the reason for going out to party (which would, in most cases, include alcohol) might be a wish to find someone. Being in a relationship might decrease the need to go searching or otherwise alter the way the students use their free time in directions which involve less alcohol.  
-*H4. Wish to take higher studies reduces probability for high alcohol use*, since the students with high ambition or career dreams might be more likely to spend more time on their studies, thus decreasing the time spent on parties.   
 
-### 3.4 Exploring the data  
+* *H1. Good family relations reduce the chances of developing a high alcohol use.* In secondary school students, high alcohol use might be related to the rebelling against authorities. On the other hand, in students who will occasionally use alcohol, I would assume that a good relationship with parents enables parental intervention before the alcohol use in their kids increases.  
+
+* *H2. Tendency to go out with your friends* will probably increase the occurrences of alcohol use, and thus *increase the probability for high alcohol use.* The underlying assumption is that among secondary school students, it is most common to use alcohol with your friends.  
+
+* *H3. Being in a romantic relationship reduces the probability of high alcohol use.* In some students, the reason for going out to party (which would, in most cases, include alcohol) might be a wish to find someone. Being in a relationship might decrease the need to go searching or otherwise alter the way the students use their free time in directions which involve less alcohol.  
+
+* *H4. Wish to take higher studies reduces probability for high alcohol use*, since the students with high ambition or career dreams might be more likely to spend more time on their studies, thus decreasing the time spent on parties.   
+
+### 3.4 Data exploration: family relations/study ambitions maybe linked to low alcohol consumption, and going out maybe linked to high alcohol consumption   
 
 **Distributions of chosen variables**  
 For graphical exploration using functions `gather()` and `glimpse()`, let's look at the subset of the original dataset. For data exploration purposes, we will include also the variable `alc_use` which was used for defining the target variables `high_use`.  
@@ -36,7 +43,7 @@ alc_subset <- subset(alc,select = variables)
 
 gather(alc_subset) %>% glimpse()#gather() reorders the subsetted dataset (6 x 382 variables) into two columns "key" (variable names) and "value", so that the gathered dataset is a matrix of 2292 (=6x382) rows and 2 columns 
 gather(alc_subset) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + ggtitle("Variable distributions") + theme(plot.title = element_text(hjust=0.5))
-````   
+```   
 
 From the bar plots of numerical variables (on the first row), we can see that `goout` seems normally distributed but distributions of alcohol use (`alc_use`) and family relationships `famrel` are skewed. Most of the secondary school students use very little alcohol and have fairly good relationship with their families.  
 
@@ -67,23 +74,85 @@ alc_subset %>% group_by(high_use) %>% summarise(count = n(), mean_famrel=mean(fa
 ```  
 From this table, it looks like high alcohol use is related to lower score in family relationships and higher going-out rate (supporting *hypotheses 1* and *2*). Let's try checking also this graphically:  
 ```{r}
-g2 <- ggplot(alc_subset,aes(x=high_use,y=famrel))
-g2 + geom_boxplot() + ylab("quality of family relations") + xlab("high alcohol use") + ggtitle("Family relations in students with low/high alcohol use") + theme_classic()
-g3 <- ggplot(alc_subset,aes(x=high_use,y=goout))
-g3 + geom_boxplot() + ylab("going out with friends") + xlab("high alcohol use") + ggtitle("Tendency to go out in students with low/high alcohol use") + theme_classic()
+g2 <- ggplot(alc_subset,aes(x=high_use,y=famrel)) + geom_boxplot() + ylab("quality of family relations") + xlab("high alcohol use") + ggtitle("Family relations") + theme_classic()
+g3 <- ggplot(alc_subset,aes(x=high_use,y=goout)) + geom_boxplot() + ylab("going out with friends") + xlab("high alcohol use") + ggtitle("Going out with friends") + theme_classic()
+grid.arrange(g2,g3,ncol=2)
+
 ```   
 
 The boxes (depicting the majority of observations) do not overlap in either figure, so the distribution of variables `famrel` and `goout` in students with low/high alcohol use continue to support *hypotheses 1 and 2* as described above.
 
 
-### 3.5 Make a logistic regression, show and interpret summary, transform coefficients into odd rations and provide confidence intervals  
-Interpret results in relation to hypotheses  
+### 3.5 Logistic regression model: good family relations decrease and going out with friends increases the probability for high alcohol use
 
-### 3.6 Predictive power of the logistic regression model 
-Comment on results, compare model performance with simple-guessing performance
+Let us fit a logistic regression model `m1` to study the statistical probability that high alcohol use is related to family relations, going out with friends, being in a romantic relationship or aspirations for higher education. After fitting the model, we will print out the summary of it.  
+```{r}
+m1 <- glm(high_use ~ famrel + goout + romantic + higher, data=alc, family="binomial")
+summary(m1)
+```  
 
-### 3.7 10-fold cross validation of own model 
-Compare the own model to datacamp model
+The model summary shows a reminder of model structure and some information on the residuals (on top) and the general deviance (goodness of fit, see e.g. [here](https://www.theanalysisfactor.com/r-glm-model-fit/), on bottom). For interpreting the results the important part is in the table of `Coefficients` between them. Now that the nonnumerical factor variables were binary, we do not need to worry about the contrasts, since there is only two classes of variables to compare in pairwise differences.  
 
-### 3.8 Compare performance of different models  
+**Interpretation of summary of `m1`**  
+
+* From the estimates of coefficients for each variable, we see that variable `famrel` and answering yes in the questions about `romantic` and `higher` is negatively related to high alcohol use (estimate < 0), and the variable `goout` is positively related to high alcohol use (estimate > 0). These estimates would seem to support our hypotheses 1-4, but when we look at the P-values, it looks like *only the effects of family relations (P=0.001) and going out with friends (P<0.001) are statistically significant*. Very low P-values associated with these variables tell that if family relations or going out with friends does not truely affect the probability for high alcohol use, it would be highly unlike to get a dataset like this.  
+
+* *The P-value related to `romantic` is not statistically significant (P=0.251>0.05)*, meaning that even if students in a romantic relationship seemed to have less tendency for high alcohol use in this dataset, there is so much variability that the result is not clear. From this data, we cannot conclude that the relationship would affect the probability of high alcohol use -- at least without collecting more data.  
+
+* *P-value associated with aspirations for higher education* is between 0.05 and 0.1. This range is sometimes called *marginally significant* - it is on a range when we can say that there is a pattern in the data, but the variability in data is still a bit too high to conclude that this pattern was not caused by chance.  
+
+To calculate the odd ratios (`OR`), we can take exponent of each of the estimates and the upper and lower limits of confidence intervals. 
+```{r}
+OR <- exp(coef(m1))
+CI <- exp(confint(m1))
+cbind(OR,CI)
+```  
+
+**Interpretation of odds ratios from `m1`**  
+Odds ratio tells the ratio of conditional probabilities of successes compared to failures. In this case, success means that a student has a high alcohol use, whereas a failure means that a student doesn't have a high alcohol use. The conditions are defined by explanatory variables we put to the model -- so, for example the OR related to the variable `higheryes` (which means that the student answered "yes" to the question about higher education) tells us that if the student wishes to continue studying after secondary school, he/she has about 40% as likely to have a high alcohol use as the student who doesn't want to continue studying (or conversely, that a student who doesn't want to continue studying after secondary school is about 2.5 times as likely to have a high alcohol use (100%/40%=2,5). For numerical variables (`famrel` and `goout`), the odd ratio tells us how much an increase of one score unit in the variable increases the chance that the student has a high alcohol use.
+
+If we combine the results from this table to those of the model summary, we should stick to interpreting ORs for statistically significant variables (for the non-significant `romanticyes` and `higheryes`, the confidence interval includes value 1, which means that based on this model, we cannot really say whether being in a relationship or wishing to continue studies increases or decreases probability of having a high alcohol use).   
+
+**Conclusions on our hypotheses based on the logistic regression model**  
+Hypothesis 1 and 2 are supported by data and logistic regression, hypothesis 3 and 4 are not.  
+
+* *H1: Good family relations decrease the probability that secondary school students have a high alcohol use (P=0.001).* An improvement of 1 in "family relations"-score decreases the probability that the students have a high alcohol consumption to 50-84% (95% CI) compared to students with worse family relations. (Or a decrease in family relations increases the probability of high alcohol use by a factor of 1.5 (100/65=1.54)).  
+
+* *H2: Going out with friends increases the probability for high alcohol consumption in secondary school students (P<0.001)*. An increase of 1 in "going out"-score increases the probability that the students consume a lot of alcohol to about 1.8-2.8-fold compared to students who go out less.  
+
+* *H3: Being in a romantic relationship does not affect the chance of having a high alcohol use (P=0.25).*   
+
+* *H4: There is no sufficient evidence to conclude that hoping to continue to higher studies would have an effect on high alcohol use in secondary school students (P=0.099).*
+
+### 3.6 The model correctly predicts the high alcohol use in 76% of the students  
+Comment on results, compare model performance with simple-guessing performance  
+
+Here, we were asked to use only the statistically significant predictors (the most parsimonous model available), so we will make a new model `m1_simple` where we have dropped the non-significant predictors. 
+```{r}
+m1_simple <- glm(high_use ~ famrel + goout, data=alc, family="binomial")
+AIC(m1,m1_simple)
+```
+
+From table above, we can note that the AIC-value associated `m1_simple` (408.32) is only slightly lower than the AIC-value of the original model `m1` (408.81), so dropping these variables did not necessary improve model fit by much, but let's still continue with the simpler model.  
+
+We will calculate predicted `probabilities`, add them to the original dataset, and create a new column `prediction` for checking whether the model would have predicted the specific student to have high alcohol use. Then, we will cross-tabulate the results to see how well the predictions fitted the actual data.  
+```{r}
+probabilities <- predict(m1_simple, type = "response") 
+alc <- mutate(alc, probability = probabilities) 
+alc <- mutate(alc, prediction = probability>0.5) 
+table(high_use = alc$high_use, prediction = alc$prediction)
+```  
+
+From the table above, we cases where the prediction was correct are on the diagonal (FALSE was predicted as FALSE, or TRUE was predicted as TRUE), so we can calculate the training error as error = (64+27)/382 = 0.238...= 24 %. Specifically, we can see that 7% of students who did use a lot of alcohol were incorrectly predicted to have a high alcohol use (27/382=0.071), and that nearly 17% of the students who used a lot of alcohol were not found by the model (64/382=0.168).   
+
+The model correctly predicted the high-alcohol use in 76% of secondary school students. It is possible that a model with a higher fit could be found by exploring the data further -- since the error rate was higher in students using a lot of alcohol, maybe adding some variable highly correlated with alcohol use to the model could improve fit and predictive power of the model.  
+
+Based on the initial guesses on the relationships between the selected explanatory variables `famrel`, `goout`, `romantic` and `higher`, two out of 4 hypotheses were shown to be correct, one was incorrect (`romantic` did not have the guessed effect on high alcohol use, which - after the analysis - feels like the most far-streched of the hypotheses), and one (the effect of study ambitions on high alcohol use) was neither proved nor disproved. So, crudely comparing the guessed hypotheses (2/4 correct, one incorrect) to the training error of the model, I would say that the error rate of guessed and modelled connections in the data is about the same, but the model had a better 'success rate'. (But the validity of this comparison can -- and should be questioned, since I doubt the errors can actually seen to be on the same scale). Personally, I think both approaches are needed: scientists making educated guesses to base the hypotheses, which should then be assessed and quantified by using available statistical tools.   
+
+***
+
+### 3.7 10-fold cross validation of own model (not done)
+Compare the own 10-fold cross validated model to datacamp model
+
+### 3.8 Compare performance of different models (not done)  
 How does number of predictors affect training/testing error rate?
