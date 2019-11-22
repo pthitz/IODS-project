@@ -1,0 +1,83 @@
+# 4. Clustering and classification
+```{r include=FALSE}
+library(MASS)
+library(corrplot)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+````
+
+### 4.1-4.2 Dataset: Boston data (from MASS-package)
+```{r}
+data("Boston")
+str(Boston)
+```  
+
+Dataset `Boston` contains information about housing values in Suburbs of Boston. The dataset describes 506 towns (rows) around Boston by 14 variables including the most common value of houses (`medv`). Numerical variables contain estimates for e.g. crime, pollution (nitrogen oxygen concentrations, `nox`), average number of rooms per home (`rm`), school size (pupil-teacher ratio, `ptratio`). There's also two nonnumerical variables (binary `chas` indicating location at riverside, and ordered index `rad` describing access to the radial highways)[^2]. 
+
+[^2]: For a full list of data attributes, see <https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html>
+
+### 4.3 Exploration of Boston-data  
+##### 4.3a Variable distributions  
+Let's start looking at variable distributions using boxplots (in combination with the gather()-function, which allows us to stack the columns of the dataset Boston (506 x 14 matrix) into a 2 x 7084 matrix, where the first column contains names of variables in Boston (`key`) and the second contains values of the variables (`value`) in each town area around Boston. We also modify the `ggplot()` code from the last weeks exercises to show a boxplot instead of histograms.  
+```{r}
+dim(gather(Boston))
+gather(Boston) %>% ggplot(aes(key,value)) + facet_wrap("key", scales = "free") + geom_boxplot() + ggtitle("Variable distributions") + theme(plot.title = element_text(hjust=0.5)) #geom_boxplot() defines that the desired type is boxplot, and we need to change the first argument into aes(x,y) to define that we want to show distribution of values in each variable (key)
+summary(Boston)
+```    
+
+From boxplots, we can see that variables are shown on very different scales, the distribution of most variables is moderately to highly skewed, and the variance also varies a lot. For example, it looks like majority of town areas are located relatively close to the radial high-way (`rad`) and have a fairly low property-tax (measured by `tax`). The `summary()` command shows us the same information visualized in boxplots.  
+
+It might be interesting to see if distributions of `tax` or `rad` (with very wide interquantile ranges) actually consist of two populations. Let's do histograms! 
+
+```{r}
+par(mfrow=c(1,2))
+hist(Boston$tax)
+hist(Boston$rad)
+```  
+
+Bingo! Besides the bulk of areas with lower tax value, there are some areas with extremely high taxes. A similar distribution is observable in the distance to highways (`rad`). To be thorough, let's replace the initial boxplots by violin plots, which show multimodal distributions more clearly.  
+```{r warning=FALSE}
+gather(Boston) %>% ggplot(aes(key,value)) + facet_wrap("key", scales = "free") + geom_violin(draw_quantiles = c(0.5)) + ggtitle("Variable distributions") + theme(plot.title = element_text(hjust=0.5)) + geom_point(position = position_jitter(0.1),alpha=0.01) #changed geom_boxplot into a geom_violin (with dra_quantiles() specifying that I want to draw a median), and added geom_points to show that I want to show points on top of the distributions (position_jitter spreads the points to make them more visible, and alpha adds transparency so that the points don't steal the show from distributions)
+
+```    
+
+##### 4.3b Relationships between variables
+To see which variables could potentially be related, we will calculate correlations between all variables and save it into `cor_matrix` and use this to draw a correlation plot using `corrplot()`. In the following graps, the size and intensity of circles corresponding to correlation between variables. Blue circles mean positive correlations, red circles mean negative correlations.  
+```{r}
+cor_matrix <- cor(Boston)
+corrplot(cor_matrix,method = "circle",type="upper",cl.pos = "b",tl.pos = "d",tl.cex = 0.6)
+```  
+
+From the plot, it looks like levels of industriality of the zone is positively related to levels of nitrogen oxides and negatively to the distance from employment centers, or accessibility to radial highways is strongly related to property tax-values, for example. Additionally, proportion of old buildings (`age`) seems to be lower closer to the highways (negative association with `rad`). It looks like the value of houses can be decreased by multiple causes (lot's of red circles in the last column), but it seems positively related to the mean number of rooms (`rm`, not maybe a big surprise) in apartments.  
+
+### 4.4 Modifications of the dataset  
+##### 4.4a Standardization  
+Different absolute values and variances might affect the multivariate methods, so to treat all variables equally, we will center each variable around its mean and scale it so that they have equal variances. This is a quick-and-dirty way to transform unimodal data closer to a normal distribution.  
+```{r}
+boston_scaled <- scale(Boston)
+summary(boston_scaled)
+boston_scaled <- as.data.frame(boston_scaled)
+```  
+
+Now mean of each variable is zero and the range of variables (shown by distance from min to max, which is now in the range of -5 to 10 in all variables) are more similar than in the original `Boston` (where variable ranges could be as different at 0-1, or 0-400).  
+
+##### 4.4b Change numerical `crim` into a categorical `crime`  
+
+```{r}
+bins <- quantile(boston_scaled$crim) #vector defining the cutting values for different categories of crime
+crime <- cut(boston_scaled$crim, breaks = bins, include.lowest = TRUE, labels = c("low", "med_low", "med_high", "high")) #create new variables crime into boston_scaled, with selected names of categories
+boston_scaled <- dplyr::select(boston_scaled, -crim) #remove original crim from data
+boston_scaled <- data.frame(boston_scaled, crime) #add new crime into data
+```  
+
+##### 4.4c Create training and testing datasets  
+
+```{r}
+n <- nrow(boston_scaled)
+ind <- sample(n,  size = n * 0.8) #choose randomly 80% of rows (these will be in the training data set)
+train <- boston_scaled[ind,]
+test <- boston_scaled[-ind,] #testing dataset consists of all rows not selected for the training
+```  
+
+### 4.5  Linear discriminant analysis----
