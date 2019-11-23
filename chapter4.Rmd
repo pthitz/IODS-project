@@ -63,6 +63,7 @@ boston_scaled <- as.data.frame(boston_scaled)
 Now mean of each variable is zero and the range of variables (shown by distance from min to max, which is now in the range of -5 to 10 in all variables) are more similar than in the original `Boston` (where variable ranges could be as different at 0-1, or 0-400).  
 
 ##### 4.4b Change numerical `crim` into a categorical `crime`  
+To create four `crime`-classes of equal size, we will use quantiles to define whether a town can be defined to have "low", "medium low", "medium high" or "high" crime, based on (standardized) per capita crime rate `crim`.  
 
 ```{r}
 bins <- quantile(boston_scaled$crim) #vector defining the cutting values for different categories of crime
@@ -72,6 +73,7 @@ boston_scaled <- data.frame(boston_scaled, crime) #add new crime into data
 ```  
 
 ##### 4.4c Create training and testing datasets  
+We are planning to do linear discriminant analysis, which is a multivariate classification methods, later. In order to test if the classification is correct, we will split the dataset randomly into training set (containing 80% of the towns) and testing set (containing the remaining 20% of the towns).  
 
 ```{r}
 n <- nrow(boston_scaled)
@@ -80,4 +82,38 @@ train <- boston_scaled[ind,]
 test <- boston_scaled[-ind,] #testing dataset consists of all rows not selected for the training
 ```  
 
-### 4.5  Linear discriminant analysis----
+### 4.5 Linear discriminant analysis for crime rate  
+In order to find out which variables are typically related to each of the crime classes, we will do linear discriminant analysis (LDA) on `crime` with other 13 variables as predictors, using the training dataset we created above. Besides fitting the LDA-model, we will show the results in a biplot.    
+
+```{r}
+lda.fit <- lda(crime~., data = train) #this creates the LDA-model
+
+classes <- as.numeric(train$crime) #to avoid having to worry about factor levels or such, we will create a numeric copy (classes) of the categorical "crime" variable
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "black", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)} #function drawing arrows that will be added to the plot above to make it into a biplot
+
+plot(lda.fit, dimen = 2,col=classes,pch=classes,cex=0.5,main="LDA for crime rate") # plotting the cases (towns) based on their distances in two dimensions. The color already separates different classes, so I reduced the symbol size (using the argument cex)
+lda.arrows(lda.fit, myscale = 1.3) # add arrows (labeled with the variables they represent) making the distance plot into a biplot
+```  
+
+From this plot, we see that based on all non-crime variables, town areas with high crime can be quite clearly separated from areas with less crime, although there a few "medium-high crime" areas resembling "high crime" areas (green plots in the cluster of blue) and one blue "high crime" clustering with majority of green "medium-high crime". The long `rad` arrow tells that the variable most clearly separating "high crime" from other classes is the accessibility from the high-crime-rate-areas to the high-way.  
+The other crime classes are less separated from each other based on non-crime variables, but their order from low to medium high (black-red-green) seems logical and suggests. The arrows are shorter and on top of each other, suggesting their predictive power for crime rate is lower, but it looks like high values on `zn` (related to zoning large areas for residential use) could be somewhat related to lower crime rate in the area.  
+
+### 4.6 Does the LDA fitted above predict crime correctly?  
+Based on the all non-crime variables in the test data set we will predict their crime classes, and cross-tabulate these predictions with the actual crime classes.  
+```{r}
+correct_classes <- test$crime # save the correct classes from test data
+test <- dplyr::select(test, -crime) # remove the crime variable from test data
+
+lda.pred <- predict(lda.fit, newdata = test) 
+table(correct = correct_classes, predicted = lda.pred$class)
+```  
+
+If the prediction for crime level between town around Boston was perfect, everything but the top-left--bottom-right diagonal of this table would be zeros. Now, we can see that the `lda.fit` predicted all towns with high crime correctly in the test data, but within the lower-than-high crime town areas, the predictive power of the model was lower. For example, of the 23 areas with "low crime" (11+8+4, on top row), only 11 were classified correctly. The difficulty of predicting these towns with lower-than-high crime was already visible in the LDA-plot based on training dataset (above): towns with low, medium-low and medium-high crime (black, red and green symbols, respectively) did not show up as distinct clusters in the plot.  
+
+### 4.7 Clusters of Boston dataset  
