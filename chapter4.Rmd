@@ -5,6 +5,7 @@ library(corrplot)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(plotly)
 ````
 
 ### 4.1-4.2 Dataset: Boston data (from MASS-package)
@@ -116,7 +117,7 @@ table(correct = correct_classes, predicted = lda.pred$class)
 
 If the prediction for crime level between town around Boston was perfect, everything but the top-left--bottom-right diagonal of this table would be zeros. Now, we can see that the `lda.fit` predicted nearly all towns with high crime correctly in the test data, but within the lower-than-high crime town areas, the predictive power of the model was lower. (The exact numbers depend on which rows were randomly selected from the original dataset, so they change every time the code is run). The difficulty of predicting the towns with lower-than-high crime was already visible in the LDA-plot based on training dataset (above): towns with low, medium-low and medium-high crime (black, red and green symbols, respectively) did not show up as distinct clusters in the plot.  
 
-### 4.7 Clustering town areas around Boston  
+### 4.7 Clustering of town areas around Boston  
 In principle I think we could use the same dataset we loaded before (since we didn't do any direct changes to it), but just in case: let's reload and standardize the data.  
 ```{r}
 data("Boston")
@@ -157,4 +158,85 @@ pairs(boston_scaled[11:14],col=km_3$cluster)
 
 * Green cluster consists of houses by the river (`chas=1`), but it is tricky to see other similarities in these towns, except potentially the low high pupil to teacher ratio (`ptratio`)  
 
-A potentially noteworthy thing is that the red and black clusters seem to be separate fairly well when the value of houses (measured by `medv`) is plotted against `lstat`, which is explained as "lower status of the population". Without knowing how this variable is defined (or going to the potential problems of defining some people to have lower status than the others), it would look like the clustering we did relates to the higher/lower valued areas around Boston, and the visual inspection of data looks like the population with `higher/lower status` is unevenly distributed in these areas. This could represent a case of regional (economical, societal) segregation. Alternative explanation is related to zonation of different towns to either commercial/industrial (black) or residential (red) areas.   
+A potentially noteworthy thing is that the red and black clusters seem to be separate fairly well when the value of houses (measured by `medv`) is plotted against `lstat`, which is explained as "lower status of the population". Without knowing how this variable is defined (or going to the potential problems of defining some people to have lower status than the others), it would look like the clustering we did relates to the higher/lower valued areas around Boston, and the visual inspection of data looks like the population with `higher/lower status` is unevenly distributed in these areas. This could represent a case of regional (economical, societal) segregation. Alternative explanation is related to zonation of different towns to either commercial/industrial (black) or residential (red) areas.  
+
+### 4.8 Bonus: which variables affect most the 5-fold clustering of Boston data?   
+Let's do a 5-fold k-means clustering on standardized Boston data.  
+```{r}
+km_5 <-kmeans(boston_scaled, centers = 5) # clustering of Boston into 5 categories
+str(km_5$cluster) # 1 x 506 matrix (or vector with 506 elements), containing cluster indexes for each town
+boston_scaled$cluster <- as.factor(km_5$cluster) # add cluster indexes (coded as factor) into 'boston_scaled' dataframe (506 x 14 matrix)
+```
+
+From visual inspection above, we can get an idea of the variables that tend to have high (e.g. `rm`, rooms per dwelling, in red) or low (e.g. `crime` in green) values within each cluster. To umambiguously explore the variables which are behind this particular clustering, we can use linear discriminant analysis to determine which (linear combination of) variables affect these five clusters the most. Now that we are not planning to use the LDA-model for predictions, there is no need to create a separate training and testing sets.
+
+```{r}
+lda_5clusters <- lda(cluster~., data = boston_scaled) #LDA-model with 'cluster' as predictor and all other variables (can use str() to check that they are numerical) as predictor variables
+lda_5clusters$means #prints mean variables within each cluster
+
+classes <- as.numeric(boston_scaled$cluster) 
+plot(lda_5clusters, dimen = 2,col=classes,pch=classes,main="LDA for 5 k-means clusters") 
+lda.arrows(lda_5clusters, myscale = 1.5) # playing with argument 'myscale' allows us to zoom in with the arrows, and see in which direction the less-clearly affecting variables seem to increase or decrease among towns
+```
+
+This biplot shows us that when looked in two dimensions, the towns/areas around Boston can be quite unambiguously divided into two main groups. First group contains two non-overlapping clusters, 1 and 3 (black and green, respectively), and second group contains clusters 2, 4 and 5 (red, blue and turquoise). In the latter group, clusters are somewhat separated on the second axis of the two dimensional distance plot, but there are some overlapping areas (red towns among turquoise and blue town). From this figure, it looks like the 5 clusters might be too much (and the noise is starting to affect the clusters), but we need to remember that we see only two dimensions of the data.  
+
+The arrows of the biplot tell us that accessibility to radial highways (`rad`) is the variable that separates black (6% of areas, shown by prior probabilities in the printout of the model above) and green clusters (24% of areas) from others. The second direction of variability (separating dark blue from red cluster) is composed mainly of the variable `ind` (proportion of non-retail business acres, i.e., area zoned for industry per town), and in smaller extent, by variable `nox`.  
+
+So, based on this analysis clusters 1 (black) and 3 (green) represent areas with small index of accessibility to the radial highways. Comparing the group means for each cluster, the towns in black cluster 1 have the highest crime rate, and quite small apartments (low `rm`, rooms per dwelling) and low value of owner-occupied homes (`medv`) compared to the towns in green cluster.  
+
+Of the towns with high index of accessibility to the radial highways, towns in the blue cluster 4 clearly rely on industry, which is partially reflected in their lower air quality (high `nox`). The turquoise (cluster 5) and red clusters (2) are mainly separated by larger proportion of very large residential areas (`zn`) and higher value of owner-occupied houses in the towns belonging to red cluster.  
+
+### 4.9 Super-bonus: going beyond two dimensions 
+
+```{r}
+model_predictors <- dplyr::select(train, -crime)
+
+# check the dimensions
+dim(model_predictors)
+dim(lda.fit$scaling) 
+
+# matrix multiplication
+matrix_product <- as.matrix(model_predictors) %*% lda.fit$scaling
+matrix_product <- as.data.frame(matrix_product)
+str(matrix_product)
+matrix_product$crime <- as.factor(train$crime) # add crime to the matrix product
+
+#3D plot for crime classes
+require(plotly)
+plot_ly(matrix_product,x = ~LD1, y = ~LD2, z = ~LD3, color=~crime, colors=c('black','red','green','blue'),type='scatter3d',mode='marker')
+```
+
+This 3D plot corresponds to 2-dimensional *LDA for crime rate* we drew in section 4.5, except that it shows also the variation on the third linear component, LD3. By rotating the 3D figure and zooming in or out, we can find a position in which it remembles the original 2D plot.  
+
+Let's try to draw a similar figure with colors defined by 5 clusters we used for the k-means in the bonus step.
+
+```{r}
+model_predictors1 <- dplyr::select(boston_scaled, -cluster)
+
+# check the dimensions
+dim(model_predictors1) # 506 x 14
+dim(lda_5clusters$scaling) # 14 x 4
+
+# matrix multiplication
+matrix_product1 <- as.matrix(model_predictors1) %*% lda_5clusters$scaling
+matrix_product1 <- as.data.frame(matrix_product1)
+str(matrix_product1) # 506 x 4 variables
+matrix_product1$cluster <- as.factor(boston_scaled$cluster) # add cluster to the matrix product
+
+#3D plot for clusters
+plot_ly(matrix_product1,x = ~LD1, y = ~LD2, z = ~LD3, color=~cluster, colors=c('black','red','green','blue','turquoise'),type='scatter3d',mode='marker')
+```
+
+This plot can be turned into a position resembling the 2D-plot we did for clustering of towns in step 4.8 (Bonus).  
+
+If we turn the plots produced in this section until the axes point into the same direction, we can see that in the *crime rate 3D-plot* there is a big diffuse cluster of towns marked with black, red and green (low, medium-low and medium-high crime) plotted on the left, and a smaller group of blue towns (high crime) plotted on the right. In the *5-fold cluster 3D-plot*, it looks like LD1 similarly separates the towns into a big diffuse (clusters 2, 4, and 5, marked with blue, turquoise and red) and a smaller distinct (clusters 1 and 3, marked with green and black) groups, even if the colors are different and axis LD1 has been rotated.  
+
+```{r}
+lda.fit$scaling # effect of variables on crime rate based on 404 observations
+lda_5clusters$scaling # effect of variables on 5-fold clustering based on 506 observations
+```
+
+Checking the coefficients of two different LDA-models reveals that LD1 in crime rate model (`lda.fit`) was mostly affected by `rad` (coefficient 3.2 is clearly higher than for any other variables in column LD1). Similarly, `rad` was the main variable affecting the axis LD1 in the 5-cluster model but the coefficient is negative (-5.9), which could explain the fact that LD1s of these two models seem to mirror each other. This supports the idea that the towns marked with high crime (dark blue in the earlier plot) are mostly the same as towns clustering in 1 and 3 (black and green in the latter plot).  
+
+Additional variation to the plots arises from different sets of predictor variables and different observations used for the two LDA-analyses.
