@@ -60,7 +60,7 @@ summary(boston_scaled)
 boston_scaled <- as.data.frame(boston_scaled)
 ```  
 
-Now mean of each variable is zero and the range of variables (shown by distance from min to max, which is now in the range of -5 to 10 in all variables) are more similar than in the original `Boston` (where variable ranges could be as different at 0-1, or 0-400).  
+Now mean of each variable is zero and the range of variables (shown by distance from min to max, which is now in the range of -5 to 10 in all variables) are more similar than in the original `Boston` (where variable ranges could be as different as 0-1 vs. 0-400).  
 
 ##### 4.4b Change numerical `crim` into a categorical `crime`  
 To create four `crime`-classes of equal size, we will use quantiles to define whether a town can be defined to have "low", "medium low", "medium high" or "high" crime, based on (standardized) per capita crime rate `crim`.  
@@ -114,6 +114,47 @@ lda.pred <- predict(lda.fit, newdata = test)
 table(correct = correct_classes, predicted = lda.pred$class)
 ```  
 
-If the prediction for crime level between town around Boston was perfect, everything but the top-left--bottom-right diagonal of this table would be zeros. Now, we can see that the `lda.fit` predicted all towns with high crime correctly in the test data, but within the lower-than-high crime town areas, the predictive power of the model was lower. For example, of the 23 areas with "low crime" (11+8+4, on top row), only 11 were classified correctly. The difficulty of predicting these towns with lower-than-high crime was already visible in the LDA-plot based on training dataset (above): towns with low, medium-low and medium-high crime (black, red and green symbols, respectively) did not show up as distinct clusters in the plot.  
+If the prediction for crime level between town around Boston was perfect, everything but the top-left--bottom-right diagonal of this table would be zeros. Now, we can see that the `lda.fit` predicted nearly all towns with high crime correctly in the test data, but within the lower-than-high crime town areas, the predictive power of the model was lower. (The exact numbers depend on which rows were randomly selected from the original dataset, so they change every time the code is run). The difficulty of predicting the towns with lower-than-high crime was already visible in the LDA-plot based on training dataset (above): towns with low, medium-low and medium-high crime (black, red and green symbols, respectively) did not show up as distinct clusters in the plot.  
 
-### 4.7 Clusters of Boston dataset  
+### 4.7 Clustering town areas around Boston  
+In principle I think we could use the same dataset we loaded before (since we didn't do any direct changes to it), but just in case: let's reload and standardize the data.  
+```{r}
+data("Boston")
+boston_scaled <- scale(Boston)
+boston_scaled <- as.data.frame(boston_scaled)
+str(boston_scaled)
+```  
+
+For clustering, we will calculate Euclidean distances (smaller the distance, more similar the towns) between each pair of towns that can be created from 506 towns. Using standardized dataset means that variables with highest initial variability (like tax, ranging from 187-711 in the original data) do have much larger weight than variables measured on smaller scale (like nitrous oxide concentrations, ranging from 0.39-0.87).  
+These distances are used in k-means, which we will first decide to do based on 3 clusters.  
+```{r}
+dist_eu <- dist(boston_scaled) # calculate distances and save them into a new object
+km <-kmeans(boston_scaled, centers = 3) #kmeans algorithm
+```
+
+The algorithm `kmeans()` now looks for the optimal way to cluster the data into three groups (defined by argument `centers = 3`). It does this by trying out different group centroids, and for each of them, calculating the Euclidean distance of all samples to the group centroid. In the optimal solutions, groups are "located" so that the distance of all observations to groups centroids are minimal.   
+The problem is that the algorithm doesn't know if some other number of clusters would allow an even better way to group data, so we will explore this by calculating the within cluster sum of squares (WCSS, kind of a multivariate variance related to each solution) for solutions with 1-10 clusters and plot them to see when the WSCC drops.   
+
+```{r}
+set.seed(1988) #unless specified otherwise, kmeans() selects a random location for each cluster it makes when calculating twcss; this could in principle affect the plot, so we will tell it to use this number instead
+k_max <- 30 #max number of clusters - if the plot doesn't seem to stabilize we could set it higher
+twcss <- sapply(1:k_max, function(k){kmeans(boston_scaled, k)$tot.withinss}) #create a vector containing total WCSS-values calculated for each 1-10 solution of kmeans
+qplot(x = 1:k_max, y = twcss, geom = 'line') #plot total WCSS against number of clusters
+```
+
+This case does not seem as clear as the DataCamp example, since the curve doesn't become "bumpy" or really start to level before k=5, but the most abrupt drop of the curve ends somewhere between 2 and 3, so we will select to do clustering with k=3. (A number as high as 5 could maybe be argumented for, but to keep interpretation simpler, we will take the more parsimonous solution.)  
+We will run the `kmeans()` again with this number of clusters and plot the solution to see how our data was grouped.  
+```{r}
+km_3 <-kmeans(boston_scaled, centers = 3) 
+pairs(boston_scaled[1:5],col=km_3$cluster)
+pairs(boston_scaled[6:10],col=km_3$cluster)
+pairs(boston_scaled[11:14],col=km_3$cluster)
+```
+
+* Dividing the data into 3 clusters shows that high crime rate is mostly found in the cluster marked with black. Other variables typical to this cluster seem to be high values in `tax` and `rad`, for example. (So, high crime rate in town might be correlated with high-value properties maybe describing wealthiness, and either high or low accessibility to the highways, depending on what accessibility index 1 meant. 
+
+* Red cluster seems to be related to low `tax`, high `dist`, low `nox` or `ind` and high `medv`. This could support the interpretation that these are residential areas, from where people commute to industrial/commercial centers.
+
+* Green cluster consists of houses by the river (`chas=1`), but it is tricky to see other similarities in these towns, except potentially the low high pupil to teacher ratio (`ptratio`)  
+
+A potentially noteworthy thing is that the red and black clusters seem to be separate fairly well when the value of houses (measured by `medv`) is plotted against `lstat`, which is explained as "lower status of the population". Without knowing how this variable is defined (or going to the potential problems of defining some people to have lower status than the others), it would look like the clustering we did relates to the higher/lower valued areas around Boston, and the visual inspection of data looks like the population with `higher/lower status` is unevenly distributed in these areas. This could represent a case of regional (economical, societal) segregation. Alternative explanation is related to zonation of different towns to either commercial/industrial (black) or residential (red) areas.   
