@@ -105,3 +105,11 @@ head(human_check) # all looks good, so the original human.csv can be replaced by
 
 write.csv(human,file="D:/Opiskelu/MOOC-kurssi/IODS-project/data/human.csv",row.names = TRUE) #save data into a human_.csv file
 
+
+write.table(human,file="D:/Opiskelu/MOOC-kurssi/IODS-project/data/human_.txt",row.names = TRUE,sep=",") #save data into a human_.csv file for checking that the saved file did not change
+human_check <- read.table("D:/Opiskelu/MOOC-kurssi/IODS-project/data/human_.txt",sep=",") 
+all.equal(human,human_check)
+str(human_check) 
+head(human_check) # all looks good, so the original human.csv can be replaced by the new one
+
+write.table(human,file="D:/Opiskelu/MOOC-kurssi/IODS-project/data/human.txt",row.names = TRUE) #save data into a human_.csv file
