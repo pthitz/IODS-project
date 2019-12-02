@@ -1,0 +1,139 @@
+# 5. Dimensionality reduction techniques
+```{r include=FALSE}
+library(GGally)
+library(dplyr)
+library(tidyr)
+library(corrplot)
+library(FactoMineR)
+````
+
+### 5.1 Dataset: introducing dataset 'human'
+```{r collapse=TRUE}
+human <- read.table("http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/human2.txt", sep=",", header=TRUE)
+str(human) # 155 obs on 8 (numerical) variables
+head(human,n=3) # check the first 3 rows to see that rownames are correctly specified
+````
+
+Data consists of population-level data collected from 155 countries. Variables measured from each country include population-wide estimates (based on  [datasets collected by UN](http://hdr.undp.org/en/content/human-development-index-hdi)) on the education level and work situation (separated by genders and shown as ratio of females to males), expected duration of education and life expectancy (in years), GNI (gross national income per capita), maternal mortality (deaths/100000 live births), adolescent birth rate (births per 1000 women aged 15-19) and proportion of females in the parliament.
+
+*I did not manage to import data from the own github, so this work will be based on the ready-made dataset provided by the course, and the [variable names](https://raw.githubusercontent.com/TuomoNieminen/Helsinki-Open-Data-Science/master/datasets/human_meta.txt) will be different from those in `create_human.R` file. Since the dataset contains only numerical variables (countries are included only as row names), we can use ggpairs (from the package 'GGally') and corrplot (from the package 'corrplot') to visualise the distributions and relationships between variables in `human`.*  
+
+```{r collapse=TRUE}
+summary(human)
+ggpairs(human)
+corrplot(cor(human),method = "circle",type="upper",cl.pos = "b",tl.pos = "d",tl.cex = 0.6)
+````
+
+**Description and interpretation**  
+
+* From the `summary()` and axis scales of `ggpairs()`, we can see that GNI is given on a different very different scale (0-125 000) compared to other variables (0-10, or 0-100). 
+
+* Histograms on the diagonal of `ggpairs()` reveal both bi- and unimodal distributions: it looks like two different groups of countries could be separated in terms of female-to-male education and work ratios (Edu2.FM and Labo.FM), life expectancies (Life.Exp) and maternal mortality (Mat.Mor), at least.
+
+* Correlation plots (`corrplot()`) show strong positive correlations between expected education (Edu.Exp) and life expectancy (Life.Exp) and maternal mortality and adolescent birtsh (Ado.Birth). Strongest negative correlations can be found between maternal mortality and life expectancy, expected education, or female-to-male education ratio. Adolescent birth is also quite negatively correlated with these variables.  
+
+### 5.2 PCA on non-standardized data  
+To see if we could effectively reduce the dimensions of (8-dimensional) `human` data, we will do the principal component analysis (PCA).  
+```{r warning=FALSE, collapse=TRUE}
+pca_human_nonstand <- prcomp(human) # perform PCA based on singular value decomposition (SVD)
+s_nonstand <- summary(pca_human_nonstand) # save summary (containing 3 variables describing `importance` of 8 first principal component axes)
+pca_pr <- round(100*s_nonstand$importance[2,],digits = 2) # calculate percentage (%) of variance contained within each principal component axis
+pca_pr # print table
+biplot(pca_human_nonstand,choices=1:2,cex=c(0.7,0.9),col=c("grey40","red"),expand=0.8) # draws biplot, with expand set to 0.9 to prevent the arrow label from going below the frame
+````
+
+*Plot 1. PCA performed on non-standardized `human` data separates countries mainly based on economical status of countries (GNI, gross national income per capita), but does not provide additional information.*
+
+The PCA result shows that the variance within 8 (non-standardized) variables could be suppressed almost completely on PC1 (includes >99% of variability in data), which, according to the `biplot()` consists almost solely of GNI, which was the variable getting highest values.  
+
+### 5.3 PCA on standardized data  
+To give each variable equal weight (regardless of absolute values), we will repeat the PCA on `human` data after standardization.  
+```{r collapse=TRUE}
+human_std <- scale(human) #centers each variable to its mean and scales the standard deviation to 1
+
+pca_human <- prcomp(human_std) # perform PCA on standardized data
+
+s <- summary(pca_human) # save summary
+pca_pr <- round(100*s$importance[2,],digits = 2) # calculate percentage (%) of variance contained within each principal component axis
+pca_pr # print % variance explained by each PC-axis
+
+biplot(pca_human,choices=1:2,cex=c(0.6,0.9),col=c("grey60","red"),expand=0.8) # draws biplot, with expand set to 0.9 to prevent the arrow label from going below the frame
+```  
+
+*Plot 2. After standardization, PCA reveals a continuum from wealthy countries (with high GNI, education level and life expectancy) to poor countries (with high maternal mortality and adolescent birth rate). Gender equality in adult population (measured in terms of ability of women to work or participate in political activity, PC2) is unrelated to the relative wealthiness of the countries.*
+
+**Comparison of non-standardized to standardized PCA, and interpretation**
+
+* Comparing the tables variance explained in % for each PCA dimension, it is clear that standardizing the data allows more nuances to be shown (not all variance is shown on the first axis). In non-standardized data, PC1 included half of the total variance, and the second axis contained over 10%. 
+
+* In the biplots, the most obvious diffence is in the length of arrows describing which variables contribute most to the PC1 and PC2. **In non-standardized case** (plot 1), only the effect of GNI (negatively associated with PC1) can be discerned. 
+
+* **In standardized case** (plot 2), we can see from biplot that countries that are located far away from each other along PC1 (e.g. Australia and Chad) are different in terms of GNI, life expectancy, expected education and female-to-male education ratio (which are high in countries plotted on the left) and maternal mortality and adolescent birth rate (high in countries plotted on the right of biplot). The PC2 separates countries such as Rwanda and Iran, and the direction of arrows shows that proportion of women in working population or within parliament is higher on countries with high coordinate along PC2 (plotted on the top side of the biplot). 
+
+Different plots show clearly the effect of standardization of data. In non-standardized data, GNI (with the highest absolute variability) dominated the PCA results and masked the potential explanatory power of all other variables.
+
+### 5.4 Reduced dimensions: wealthiness and gender equality (in adults)?
+
+Based on the reasoning below, I would suggest following interpretations for axes of PCA done on standardized data:  
+**PC1 = wealthiness (economy, education, life expectancy vs. low reproductive equality)** (on inverse scale)  
+**PC2 = gender equality in adult population**
+
+* **PC1**: Directionality of arrows in plot 2 (**standardized case**) indicates that economical status of countries (measured by GNI) is strongly associated with high (or at least long) education and life expectancy, and does not occur in countries with high maternal mortality or adulescent birth rate. Effects of these variables cannot be separated from each other, and if further analysis on any of them is made, they should be interpreted together. This axis seems to reflect the gradual shift from 'first-world-countries' to the 'third-world-countries'.
+
+* **PC2**: Irrespective of the relative wealthiness (or variables correlated with PC1), the countries can be separated by activity of females in work or politics. This could reflect differences in equality of the society (how easy it is for women to get into or remain in the working life) or family support systems (is responsibility of daycare equally divided between parents, is it easy to find daycare if both parents are working). The orthogonality of these axes suggests that gender equality (of adult females) is unrelated to the relative wealthiness of the countries.  
+
+* Although gender equality (in adult population) seems to be contained mainly on PC2, this interpretation does not seem valid for young/reproducing women (measured as female education, adolescent birth rate or maternal mortality). The highest female education is achieved in wealthiest countries (low scores on PC1) and is strongly negatively related to adolescent birth rate (girls who continue studying are less likely to have children very early), or maternal mortality (also probably related to available healthcare and/or wealthiness of the country). High adolescence birth rate in less-wealthy countries could also be related to lower life-expectancy - if the probability of both parents surviving to old age is lower, from family-planning perspective it does not make sense to wait too long before starting the family.
+
+
+### 5.5 Multiple correspondence analysis on attitudes related to drinking tea
+```{r results='hide'}
+data("tea")
+dim(tea) # 300 x 36 matrix
+str(tea) # out of 36 variables, only 1 is a non-factor variable (age, integer); all factors have two levels so it looks like data is organized into a binary categories (indicator matrix)
+```
+
+The dataset seems to consist of questionnaire results for 300 tea drinkers (observations). 36 variables include age and 35 indicator variables related to tea-drinking habits (when, where, how) or attitudes related to tea-drinking. It looks like the data could have been collected by asking questions with with pre-set options to tick, and the indicator variables represent "no" or "yes" answers to those ticks.  
+
+##### 5.5a Visualizing attitudes and other variables in data 'tea'  
+I decided that I am interested into the attitudes and reasons that can make people consume tea. Let's make a subset of attitude variables and visualise them a bit.  
+```{r collapse=TRUE, warning=FALSE}
+#decide variables to be subsetted
+names(tea) # last 12 variables seem related to attitudes towards or reason for tea-drinking
+
+#create subset
+keep_attitudes <- c("escape.exoticism","spirituality","healthy","diuretic","friendliness","iron.absorption","feminine","sophisticated","slimming","exciting","relaxing","effect.on.health")
+tea_attitudes <- select(tea,one_of(keep_attitudes))
+tea_others <- select(tea,-one_of(keep_attitudes))
+
+#visualize data (in two separate plots, to keep individual variables readable)
+gather(tea_attitudes[,1:6]) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+gather(tea_attitudes[,7:12]) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+```
+
+Tea-drinking seems to be associated with friendliness and associated healthyness (although most observants did not think tea-drinking had had an effect on their health). There could be also some other social aspects to tea-drinking: it can be considered sophisticated or relaxing.  
+
+**Visualization of other variables**
+```{r collapse=TRUE, warning=FALSE}
+tea_others <- select(tea,-one_of(keep_attitudes))
+gather(tea_others[,1:8]) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+gather(tea_others[,9:16]) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+gather(tea_others[,17:24]) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+````
+
+##### 5.5b Multiple correspondence analysis (MCA) of attitudes related to tea
+```{r collapse=TRUE}
+mca <- MCA(tea_attitudes,graph=FALSE)
+summary(mca)
+
+# Plots:
+plot(mca,cex=.8,selectMod="contrib 10",select="contrib 20") #a biplot with 10 most strongly contributing categories (red) and 20 most strongly contributing individuals (dark blue) 
+plot(mca,choix="var",xlim=c(0,0.5),ylim=c(0,0.5),cex=.8) #how much variabiliy is contained in each of the variables
+```  
+
+The MCA summary shows that when selected attitude-variables are looked at, the dimensionality reduction does not provide a clear cut-off after which new dimensions would not be useful. This can be seen by the % of var in each MCA dimension - the values decrease little by little, and 4-5 dimensions would be needed before half of the variability can be captured by MCA. The first two dimensions (most convenient choice for plotting) include about 26% of the variability in the data.  
+
+From the biplot we can see which variables (categories) contribute to the first and second MCA dimensions (in red, only 10 most affective one have been plotted). High values in Dim1 and Dim2 seem to correspond to positive answers, and individuals (marked with blue, 20 people whose answers contributed most to these two axes are shown) with high scores in Dim1 seem to consider tea-drinking as slimming or feminine activity. Dim2 is more related to exciting vs. healthy aspect of tea-drinking. In the overall, this plot does not seem to reveal any patterns of the tea-drinking attitudes.  
+
+Variables representation plot allows us to get deeper into which variables contribute to Dim1 and Dim2. Dim1 includes variables such as feminine, slimming, sophisticated and and diuretic (external reasons to tea drinking, related to how people perceive tea-drinkers, or an attempt for weight control). Dim2 includes variables such as effect.on.health, exciting and relaxing - maybe more related to experience of tea-drinking. Variable health is contributing quite strongly to both Dim1 and Dim2.  
+
+Even if this tea-attitude analysis did not reveal any patterns, its results could be used as simplified attitude dimensions to predict other variables such as frequency of tea-drinking, or as target variables in determining whether male/female tea-drinkers or people with different ages tend to have different attitudes to tea drinking.  
