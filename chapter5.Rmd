@@ -72,7 +72,7 @@ biplot(pca_human,choices=1:2,cex=c(0.6,0.9),col=c("grey60","red"),expand=0.8) # 
 
 Different plots show clearly the effect of standardization of data. In non-standardized data, GNI (with the highest absolute variability) dominated the PCA results and masked the potential explanatory power of all other variables.
 
-### 5.4 Reduced dimensions: wealthiness and gender equality (in adults)?
+### 5.4 Reduced dimensions: wealthiness and gender equality (in adults)
 
 Based on the reasoning below, I would suggest following interpretations for axes of PCA done on standardized data:  
 **PC1 = wealthiness (economy, education, life expectancy vs. low reproductive equality)** (on inverse scale)  

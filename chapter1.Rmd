@@ -1,10 +1,10 @@
 
 # 1. About the project
 
-### Feeling right now
+### 1.1 Feeling right now
 I think I drank too much tea while doing the first set of DataCamp exercises.  
 
-### Hopes/expectations for the course
+### 1.2 Hopes/expectations for the course
 * My original motivation for taking the course stems from the fact that although I have already for a while used __RStudio as a default tool__ for doing univariate statistics and figures related to them, so far I've felt intimidated to take it further to analyzing multivariate data. Which is a shame, as I think in the long run it would be much more efficient (timewise) to use R for all the statistics I do. 
 * From a less-programming/more-content point of view, the data I usually handle (plant secondary metabolites) tends to be multivariate and having a more variable set of multivariate methods in my statistical toolbox might yield important insights. Sadly, even if some of these methods have been covered in the basic statistics courses I took, it's been a while since then, and I don't feel confident enough to just start exploring and using the tools. So during the course I hope to develop a basic sense of 
   (@) __how to use the analytical tools for multivariate data__, 
@@ -13,7 +13,7 @@ and
   (@) __what are the worst caveats I should avoid as a beginner.__
 * I never used GitHub before but can't be too painful to learn, I hope.  
 
-### Where did I found out about the course?
+### 1.3 Where did I found out about the course?
 I read about the course from UEF Yammer some time ago, and got interested for (or despite) the abovementioned reasons, so here we are.  
 
 ***

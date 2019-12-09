@@ -149,10 +149,3 @@ The model correctly predicted the high-alcohol use in 76% of secondary school st
 
 Based on the initial guesses on the relationships between the selected explanatory variables `famrel`, `goout`, `romantic` and `higher`, two out of 4 hypotheses were shown to be correct, one was incorrect (`romantic` did not have the guessed effect on high alcohol use, which - after the analysis - feels like the most far-streched of the hypotheses), and one (the effect of study ambitions on high alcohol use) was neither proved nor disproved. So, crudely comparing the guessed hypotheses (2/4 correct, one incorrect) to the training error of the model, I would say that the error rate of guessed and modelled connections in the data is about the same, but the model had a better 'success rate'. (But the validity of this comparison can -- and should be questioned, since I doubt the errors can actually seen to be on the same scale). Personally, I think both approaches are needed: scientists making educated guesses to base the hypotheses, which should then be assessed and quantified by using available statistical tools.   
 
-***
-
-### 3.7 10-fold cross validation of own model (not done)
-Compare the own 10-fold cross validated model to datacamp model
-
-### 3.8 Compare performance of different models (not done)  
-How does number of predictors affect training/testing error rate?
