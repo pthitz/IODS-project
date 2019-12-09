@@ -34,7 +34,7 @@ str(BPRSL$Week) # values of Week and Time are character vectors which is not opt
 str(RATSL$Time)
 
 BPRSL <-  BPRSL %>% mutate(Week = as.integer(substr(Week,5,5))) # pick out the 5th character of "Week" and use it to replace the original Week
-RATSL <-  RATSL %>% mutate(Time = as.integer(substr(Time,3,3)))
+RATSL <-  RATSL %>% mutate(Time = as.integer(substr(Time,3,4)))
 
 str(BPRSL) # check that the substr() worked and Week and Time contain integers telling at which time the measurements (bprs or Weight) were taken
 str(RATSL) 

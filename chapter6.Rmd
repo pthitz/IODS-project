@@ -1,0 +1,141 @@
+# 6. Analysis of longitudinal data
+```{r include=FALSE}
+library(dplyr)
+library(ggplot2)
+````
+
+## 6.1 RATS data: effect of diet on rat weight  
+```{r}
+RATSL <- read.table("D:/Opiskelu/MOOC-kurssi/IODS-project/data/RATSL.txt",header=TRUE) 
+str(RATSL)
+summary(RATSL$Time)
+
+RATSL$ID <- factor(RATSL$ID) # code categorical variables (ID and Group) as factors
+RATSL$Group <- factor(RATSL$Group)
+
+glimpse(RATSL) # check structure and first few values of data
+str(RATSL) # str() shows also number of levels for factor variables
+summary(RATSL)
+```
+
+Dataset contains body weights of 16 rats (`weight`, in grams) which were fed with three different diets (`Group`). Weight of each rat (separated by `ID`) was measured on 11 occasions (`Time`, in days since start).  
+
+### 6.1a graphs  
+To start with, let's plot weight development over time for individual rats, separately for rats fed with different diets.  
+
+```{r}
+ggplot(RATSL, aes(x = Time, y = weight, linetype = ID)) +
+  geom_line() +
+  theme_bw() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ Group, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(RATSL$weight), max(RATSL$weight)),name="Weight (grams)") +
+  scale_x_continuous(name="Time (days)") +
+  ggtitle("Weight of rat individuals over time")
+```
+
+On all diets (shown in different panels), rat weight seems to over time, but rats receiving diet 2 or 3 were substantially larger (already at the start of the experiment) than rats receiving diet 1. From this plot, it is difficult to say whether the growth rate (steepness of the increase in body weight) differs between diets, but there is definitely some individual variation in rat growth rates (e.g. continuous individual in group 2 grows slower than all other rats) or rat sizes (besides the "dense" of lines within each panel, there is an outlier individual which is smaller or larger than most rats in that treatment).  
+
+It might be possible to see individual rat responses better, if weights were standardized for each time point and group.     
+
+```{r}
+RATSL <- RATSL %>%
+  group_by(Time,Group) %>%
+  mutate(stdweight = (weight - mean(weight))/sd(weight)) %>%
+  ungroup() # add a column stdweight to the dataset. For each observation, this column contains the difference to mean weight observed at that time in that group, scaled by dividing with standard deviation within that time and group.
+str(RATSL)
+
+ggplot(RATSL, aes(x = Time, y = stdweight, linetype = ID)) +
+  geom_line() +
+  theme_bw() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ Group, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(RATSL$stdweight), max(RATSL$stdweight)),name="standardized weight") +
+  scale_x_continuous(name="Time (days)") +
+  ggtitle("Difference to mean weight of individual rats over time")
+```  
+
+Now we don't see differences between groups, or the average (growing) trend in body weight of rats over time, but the rats with growth profile differing from the average can be really clearly seen. E.g. the difference between smaller than average rat in group 1 (dashed line on the bottom) to the group mean increases (line drops farther away from mean value 0). Keeping this rat in group 1 will probably affect estimated group responses. By increasing "noise" in the data it might decrease the chances that the model will show significant differences - but, without knowing more about this particular rat (Was it considerably more sickly or stressed than other rats in this group? Did it eat less, or was the difference in trends caused solely by effectiveness of growth), I would not dare to remove it as an outlier.  
+
+Now we can move from looking at individual rats into summaries of group responses (mean and standard error of mean).
+```{r}
+n <- RATSL$Time %>% unique() %>% length() #makes a vector of unique values of Time, and counts the length of that vector (n = number of measurement days)
+RATSS <- RATSL %>%
+  group_by(Group, Time) %>%
+  summarise( mean = mean(weight), se = sd(weight)/sqrt(n)) %>% ungroup() #create summary data containing mean and SE for each diet group and time point
+glimpse(RATSS) # a data matrix of 33 rows (11 time points x 3 groups) and 4 variables
+
+ggplot(RATSS, aes(x = Time, y = mean, linetype = Group, shape = Group, color = Group)) +
+  geom_line() +
+  scale_linetype_manual(values = c(1,2,3)) +
+  geom_point(size=1.5) +
+  scale_shape_manual(values = c(1,2,3)) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se, linetype="1"), width=0.3) +
+  theme_bw() +
+  theme(legend.position = "right") +
+  scale_y_continuous(name = "mean(weight) +/- se(weight)")+
+  ggtitle("Mean rat weight on different diets over time")
+```
+
+From this plot, it looks clear that rat weight on diet 1 is lower than rat weights in group 2 and 3. Standard errors (error bars) of groups 2 and 3 do not overlap which might suggest that there is also a difference between these groups. However, since this difference was obvious since day 1, the difference in groups-specific mean weights does not tell us whether the different diets supported similar growth.  
+
+### 6.1b Rat body weight differs between diets  
+To study whether the rat body size is different on different diets (now ignoring the fact that repeated measurements from same rats are not independent), we can do an ANOVA on body weight, using diet group as grouping factor.  
+```{r}
+RATSS1 <- RATSL %>%
+  group_by(ID,Group) %>%
+  summarise(weight_mean=mean(weight)) %>%
+  ungroup() # calculate mean weight of each individual rat in each group over 11 sampling dates
+glimpse(RATSS1) # 16 rows (rats) belonging to 3 diet groups
+
+ggplot(RATSS1, aes(x = Group, y = weight_mean)) +
+  geom_boxplot() +
+  stat_summary(fun.y = "mean", geom = "point", shape=23, size=4, fill = "white") +
+  scale_y_continuous(name = "mean(weight), days 1-65") +
+  scale_x_discrete(name = "Diet") +
+  theme_bw() +
+  ggtitle("Mean weight of rats on different diets")
+
+w1 <- lm(weight_mean ~ Group,data=RATSS1)
+anova(w1)
+summary(w1)
+```
+
+F-test performed by anova() tells that diet affects (P<0.001) rat weight, and statistics related to model coefficients that rats growing on diets 2 and 3 have clearly a higher body weight than rats growing on diet 1 (P<001 for both), although the boxplot shows that distribution of observations in groups 2 and 3 are not normal (but, without knowing a good reason to remove these individuals as outliers, I would not do it).  
+
+### 6.1c ... but effect is not significant when initial weight is included
+But what happens if we take into account the different initial body size of rats in these groups?
+```{r}
+RATS <- read.table("D:/Opiskelu/MOOC-kurssi/IODS-project/data/RATS.txt",header=TRUE) #importing the wide-format of data
+RATSS1 <- RATSS1 %>%
+  mutate(baseline = RATS$WD1)
+glimpse(RATSS1)
+
+w2 <- lm(weight_mean ~ baseline + Group,data=RATSS1)
+anova(w1,w2) # LR-tests; when anova() is used on two linear models, it checks whether the fit of the more complex model is better than the simpler one.
+
+anova(w2) #F-test
+summary(w2) #t-tests for model coefficients
+```
+
+### 6.1d Interpretation of results
+* Likelihood ratio (LR) test indicates that including the baseline into the weight model significantly increased model fit, so the more complex model `w2` is better and should be used for interpretations. 
+
+* The F-test related to this model tells that there is a trend for differences between diet groups (P=0.076 > 0.05), but the effect (at least without removing the outliers) is not clear enough to consider it statistically significant. Summary t-tests support the view that diet 2 supports the highest mean weight (when corrected for initial body weight), but the possibility that this is caused by chance cannot be excluded based on this analysis and data.  
+
+* A very significant F-test value related to the baseline (P<0.001), and positive estimate for the baseline effect in t-tests (P<0.001) shows that the (initially) largest rats also have the highest mean weight measured over the experiment.  
+
+To conclude, **we did not find enough evidence to state that the diet would affect rat body weight.**  
+
+This analysis ignores the potential effect of different intervals between measurements, as well as the individual differences in rat growth profiles. Since we used mean over time as the (summary) response variable, assumption of independency was not violated, but we lost quite a bit of data compared to a mixed model approach, where also the *within-subject* (or within-rat) *variability* could have been modelled.  
+
+
+## 6.2 BPRS  
+```{r}
+BPRS <- read.table("D:/Opiskelu/MOOC-kurssi/IODS-project/data/RATSL.txt",header=TRUE)
+```
+### 6.2a graphs
+### 6.2b analysis
+### 6.3c interpretation
