@@ -2,14 +2,13 @@
 ```{r include=FALSE}
 library(dplyr)
 library(ggplot2)
+library(lmerTest)
+library(GGally)
 ````
 
 ## 6.1 RATS data: effect of diet on rat weight  
 ```{r}
 RATSL <- read.table("D:/Opiskelu/MOOC-kurssi/IODS-project/data/RATSL.txt",header=TRUE) 
-str(RATSL)
-summary(RATSL$Time)
-
 RATSL$ID <- factor(RATSL$ID) # code categorical variables (ID and Group) as factors
 RATSL$Group <- factor(RATSL$Group)
 
@@ -20,7 +19,7 @@ summary(RATSL)
 
 Dataset contains body weights of 16 rats (`weight`, in grams) which were fed with three different diets (`Group`). Weight of each rat (separated by `ID`) was measured on 11 occasions (`Time`, in days since start).  
 
-### 6.1a graphs  
+#### 6.1a graphs  
 To start with, let's plot weight development over time for individual rats, separately for rats fed with different diets.  
 
 ```{r}
@@ -81,7 +80,7 @@ ggplot(RATSS, aes(x = Time, y = mean, linetype = Group, shape = Group, color = G
 
 From this plot, it looks clear that rat weight on diet 1 is lower than rat weights in group 2 and 3. Standard errors (error bars) of groups 2 and 3 do not overlap which might suggest that there is also a difference between these groups. However, since this difference was obvious since day 1, the difference in groups-specific mean weights does not tell us whether the different diets supported similar growth.  
 
-### 6.1b Rat body weight differs between diets  
+#### 6.1b Rat body weight differs between diets  
 To study whether the rat body size is different on different diets (now ignoring the fact that repeated measurements from same rats are not independent), we can do an ANOVA on body weight, using diet group as grouping factor.  
 ```{r}
 RATSS1 <- RATSL %>%
@@ -105,7 +104,7 @@ summary(w1)
 
 F-test performed by anova() tells that diet affects (P<0.001) rat weight, and statistics related to model coefficients that rats growing on diets 2 and 3 have clearly a higher body weight than rats growing on diet 1 (P<001 for both), although the boxplot shows that distribution of observations in groups 2 and 3 are not normal (but, without knowing a good reason to remove these individuals as outliers, I would not do it).  
 
-### 6.1c ... but effect is not significant when initial weight is included
+#### 6.1c ... but effect is not significant when initial weight is included
 But what happens if we take into account the different initial body size of rats in these groups?
 ```{r}
 RATS <- read.table("D:/Opiskelu/MOOC-kurssi/IODS-project/data/RATS.txt",header=TRUE) #importing the wide-format of data
@@ -120,7 +119,7 @@ anova(w2) #F-test
 summary(w2) #t-tests for model coefficients
 ```
 
-### 6.1d Interpretation of results
+#### 6.1d Interpretation of results
 * Likelihood ratio (LR) test indicates that including the baseline into the weight model significantly increased model fit, so the more complex model `w2` is better and should be used for interpretations. 
 
 * The F-test related to this model tells that there is a trend for differences between diet groups (P=0.076 > 0.05), but the effect (at least without removing the outliers) is not clear enough to consider it statistically significant. Summary t-tests support the view that diet 2 supports the highest mean weight (when corrected for initial body weight), but the possibility that this is caused by chance cannot be excluded based on this analysis and data.  
@@ -132,10 +131,110 @@ To conclude, **we did not find enough evidence to state that the diet would affe
 This analysis ignores the potential effect of different intervals between measurements, as well as the individual differences in rat growth profiles. Since we used mean over time as the (summary) response variable, assumption of independency was not violated, but we lost quite a bit of data compared to a mixed model approach, where also the *within-subject* (or within-rat) *variability* could have been modelled.  
 
 
-## 6.2 BPRS  
+## 6.2 BPRS-data: scizofrenia symptoms in two treatment groups  
 ```{r}
-BPRS <- read.table("D:/Opiskelu/MOOC-kurssi/IODS-project/data/RATSL.txt",header=TRUE)
+BPRSL <- read.table("D:/Opiskelu/MOOC-kurssi/IODS-project/data/BPRSL.txt",header=TRUE)
+BPRSL$treatment <- factor(BPRSL$treatment) # code categorical variables (treatment and subject) as factors
+BPRSL$subject <- factor(BPRSL$subject)
+
+glimpse(BPRSL) # check structure and first few values of data
+str(BPRSL) # str() shows also number of levels for factor variables
+summary(BPRSL)
+```  
+
+The data consists of `bprs` score (summary for severity of scizophrenia symptoms observed by healthcare professional, with higher value indicating more symptoms) of 20 patients (identified by `subject`). The bprs-score was recorded weekly for 9 `weeks`, and starting from week 1, the patients received two alternative `treatments`.  
+
+#### 6.2a graphs  
+Let's start again by plotting the development of symptoms in 20 patients over time.  
+
+```{r}
+ggplot(BPRSL, aes(x = Week, y = bprs, group = interaction(subject,treatment))) +
+  geom_point(aes(shape = treatment,colour=treatment)) +
+  geom_line(aes(linetype=treatment,colour=treatment)) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  theme_bw() +
+  scale_x_continuous(name = "Time (weeks)") +
+  scale_y_continuous(name = "bprs") +
+  theme(legend.position = "none") +
+  ggtitle("Symptom development in individuals over time")
 ```
-### 6.2a graphs
-### 6.2b analysis
-### 6.3c interpretation
+
+This figure is not hugely informative, but it shows that there is considerable variation in symptom profiles of individuals over time. Severity of symptoms (bprs) tends to decrease over time in both groups, and the overall symptoms might be slightly lower in treatment 1 compared to treatment 2, but from this figure, it is impossible to say with any certainty.  
+
+We can also plot the repeated measurements from each individual (wide-format data) to check if there is correlation structure in the data.  
+```{r}
+BPRS <- read.table("D:/Opiskelu/MOOC-kurssi/IODS-project/data/BPRS.txt",header=TRUE) #same data in wide format
+glimpse(BPRS)
+pairs(BPRS[,3:11])
+```
+
+It looks like at least the bprs scores from closely associated weeks (close to the diagonal) are fairly strongly correlated. This is one example of a correlation/covariance structure in the data that could and should be modelled.   
+
+#### 6.2b selecting the best fitting linear mixed effect model     
+Our final aim is to explore whether there are interactive or main effects of week and treatment in the data, when individual patients are allowed to  
+a) have overall different symptom levels (*random intercept*)  
+b) have overall differences and slopes (tendency for change over time) in symptom levels (*random intercept and slope*). 
+
+We will also look at a couple of simpler linear (non-mixed) models, and use LR-tests to investigate whether the improved (more complex) model structures will be required to model the variability in data in as parsimonous manner as possible.      
+```{r}
+bprs1 <- lm(bprs~Week+treatment,data=BPRSL) # main effect model, no interactive term between week and treatment
+bprs2 <- lm(bprs~Week*treatment,data=BPRSL) # main + interactive effects of week and treatment
+
+anova(bprs1,bprs2) #LR-test: is `week x treatment` interaction required for the most parsimonous model?
+# - no (P>0.1), at least if the model does not include random parts
+
+bprs3 <- lme4::lmer(bprs~Week*treatment+(1|subject),data=BPRSL,REML=FALSE) # random intercept
+bprs4 <- lme4::lmer(bprs~Week*treatment+(Week|subject),data=BPRSL,REML=FALSE) # random intercept and slope
+
+anova(bprs3,bprs4) #LR-test: is random slope required for the most parsimonous models?
+# - yes (P=0.024)
+
+bprs5 <- lme4::lmer(bprs~Week+treatment+(Week|subject),data=BPRSL,REML=FALSE) # random intercept and slope, no interaction between main effects?
+anova(bprs4,bprs5) #LR-test: is `week x treatment` interaction required for the most parsimonous model, when model includes random intercept and slope?
+# - maybe (P=0.075)
+```  
+
+Sometimes LR-tests can be quite useful tool for selecting which variables (or interactions) to keep in the final model. This time, however, the result was not very definite. Even if LR-tests clearly indicated that a model with random intercept and slope fitted the data more closely than the model with random intercept only, it was not very clear from test result whether including the the (fixed) interaction between time and treatment would improve the model fit. Sometimes this can be determined by going back to the study questions - if we expect that there might be an interactive effect (e.g., if we expect that one of the treatments might start reducing the symptoms earlier), this term should not be removed from the final model.  
+
+#### 6.2c interpretation of results  
+In this case, we will take a look at results of both models `bprs4` and `bprs5` to see if this matters for interpretation of results. (In real research I would consider this risky, because if you check the results before deciding on the final model, you might be tempted to pick the results you like instead of the results reflecting the data better). We will re-fit the final models using the package `lmerTest`, where the summary() prints also tests for model coefficients.  
+
+```{r}
+bprs4 <- lmerTest::lmer(bprs~Week*treatment+(Week|subject),data=BPRSL,REML=FALSE) # time x treatment -interaction included
+anova(bprs4)
+summary(bprs4)
+
+bprs5 <- lmerTest::lmer(bprs~Week+treatment+(Week|subject),data=BPRSL,REML=FALSE) # time x treatment -interaction not included
+anova(bprs5)
+summary(bprs5)
+```
+
+In this case, the interpretation between models with different fixed effect structure did not change (effect related to interaction term in model `bprs4` was not significant, based on an F-test - P=0.075). The interpretation results from both models is that scizophrenia-symptoms decreased over time (negative estimate for week), but there was no difference in treatments, at least in this dataset.  
+
+We can finish by plotting fitted values from the more complex model and comparing it to the observed values.  
+
+```{r}
+ggplot(BPRSL, aes(x = Week, y = bprs, group = interaction(subject,treatment))) +
+  geom_point(aes(shape = treatment,colour=treatment)) +
+  geom_line(aes(linetype=treatment,colour=treatment)) +
+  theme_bw() +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  scale_x_continuous(name = "Time (weeks)") +
+  scale_y_continuous(name = "bprs") +
+  theme(legend.position = "bottom") +
+  ggtitle("Observed symptom development")
+
+Fitted <- fitted(bprs4)
+BPRSL <- BPRSL %>%  mutate(Fitted)
+ggplot(BPRSL, aes(x = Week, y = Fitted, group = interaction(subject,treatment))) +
+  geom_point(aes(shape = treatment,colour=treatment)) +
+  geom_line(aes(linetype=treatment,colour=treatment)) +
+  theme_bw() +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  scale_x_continuous(name = "Time (weeks)") +
+  scale_y_continuous(name = "bprs") +
+  theme(legend.position = "bottom") +
+  ggtitle("Fitted symptom development")
+``` 
+
+The trends visible from fitted values have some resemblance to observed values but do not capture the variability inherent to the first figure. **To conclude, we could say that both treatments are equally effective in reducing the symptoms**, although it might be worthwhile to study the individual variability (with techniques and plots similar to the RATS data) and consider the possibility of outliers, as well as spend some time checking model assumptions before fixating to the conclusion.   
